@@ -66,8 +66,11 @@ struct PageRenderPlugin {
     page: data::Page,
     data_url: String,
     plugin_type: String,
+    display_text: Option<String>,
+    rendered_title: Vec<String>,
 }
 
+//TODO: make some merge between the folder and media part (including getting label from parent)
 #[get("/plugin?<path>&<parent_path>")]
 fn render_plugin(kodi: State<Kodi>, path: String, parent_path: Option<String>) -> Template {
     let path = html_escape::decode_html_entities(&path).to_string();
@@ -105,20 +108,26 @@ fn render_plugin(kodi: State<Kodi>, path: String, parent_path: Option<String>) -
                         }
                         None => return generate_error_page("no media found for this page".into()),
                     };
+                    let display_text = Some(resolved_listitem.get_display_html());
                     resolved_listitem.path = Some(url);
                     let data = PageRenderPlugin {
                         page,
                         data_url: path,
                         plugin_type,
+                        display_text,
+                        rendered_title: Vec::new(),
                     };
                     Template::render("plugin_media", data)
                 }
                 None => {
                     // contain a folder
+                    let rendered_title = page.sub_content.iter().map(|content| content.listitem.get_display_html()).collect();
                     let data = PageRenderPlugin {
                         page,
                         data_url: path,
                         plugin_type,
+                        display_text: None,
+                        rendered_title,
                     };
                     Template::render("plugin_folder", data)
                 }
@@ -164,13 +173,13 @@ fn render_musicplayer(kodi: State<Kodi>, path: String) -> Template {
                 };
                 musics.push(match &sub_media.listitem.path {
                     Some(media_url) => {
-                        (sub_media.listitem.get_display_text(), media_url.to_string())
+                        (sub_media.listitem.get_display_html(), media_url.to_string())
                     }
                     None => match kodi.invoke_sandbox(&sub_media.url) {
                         Ok(submedia_loaded) => match submedia_loaded.resolved_listitem {
                             Some(resolved_listitem) => match &resolved_listitem.path {
                                 Some(path) => (
-                                    resolved_listitem.get_display_text(),
+                                    resolved_listitem.get_display_html(),
                                     choose_local_or_external_media_url(
                                         path.to_string(),
                                         sub_media.url.as_str(),

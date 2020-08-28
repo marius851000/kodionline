@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use crate::format_to_string;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Page {
@@ -28,9 +29,9 @@ pub struct ListItem {
 }
 
 impl ListItem {
-    pub fn get_display_text(&self) -> String {
-        if let Some(value) = self.label.clone() {
-            return value
+    pub fn get_display_html(&self) -> String {
+        if let Some(value) = &self.label {
+            return format_to_string(value)
         };
         return "unnamed".into()
     }

@@ -1,14 +1,11 @@
 {% extends "base" %}
 {%block title%}
-	{% if page.resolved_listitem.label %}
-		{{page.resolved_listitem.label}}
-	{%else%}
-		{{data_url}}
-	{%endif%}
+	{{display_text | safe}}
 {%endblock title%}
 
 {%block content%}
 
+<!--TODO: additionnal metadata-->
 <div class = "main_media">
 	{%if plugin_type == "video"%}
 		<video controls>
