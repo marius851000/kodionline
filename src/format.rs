@@ -74,7 +74,10 @@ fn test_format() {
     assert_eq!(&format_to_string("[B]Hello[/B]"), "<b>Hello</b>");
     assert_eq!(
         &format_to_string("[COLOR ffFBBA16]Hello[/COLOR]"),
-        "<span style=\"color: #FBBA16ff;\">Hello</span>"
+        if IGNORE_COLOR {
+            "Hello"
+        } else {
+            "<span style=\"color: #FBBA16ff;\">Hello</span>"
+        }
     );
-    //TODO: test for [COLOR]
 }

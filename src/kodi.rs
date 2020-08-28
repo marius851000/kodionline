@@ -70,7 +70,7 @@ impl Kodi {
     ///
     /// ```
     /// use kodionline::Kodi;
-    /// let kodi = Kodi::new("~/.kodi".to_string()).unwrap();
+    /// let kodi = Kodi::new("~/.kodi").unwrap();
     /// ```
     pub fn new(path: &str) -> Result<Self, KodiError> {
         Ok(Self {
