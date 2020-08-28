@@ -9,14 +9,14 @@
 <div class = "main_media">
 	{%if plugin_type == "video"%}
 		<video controls>
-			<source src="/get_media?path={{data_url | urlencode}}" />
+			<source src="/get_media?path={{data_url | safe | urlencode}}" />
 			{#{% for subtitle in page.resolved_listitem.subtitles %}
 				<track kind="captions" src="{{subtitle}}" srclang="en" label="English"/>
 			{% endfor %}#}
 		</video>
 	{%elif plugin_type == "audio"%}
 		<audio controls>
-			<source src="/get_media?path={{data_url | urlencode}}" />
+			<source src="/get_media?path={{data_url | safe | urlencode}}" />
 		</audio>
 	{%else%}
 		can't detect the type of media this content is. please download the file to play it
@@ -25,7 +25,7 @@
 <h2>download:</h2>
 <ul class="download">
 	<li>
-		<a href="/get_media?path={{data_url | urlencode}}">{%-if plugin_type == "video"-%}
+		<a href="/get_media?path={{data_url | safe | urlencode}}">{%-if plugin_type == "video"-%}
 			video
 		{%-elif plugin_type == "audio"-%}
 			audio

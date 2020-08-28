@@ -14,7 +14,7 @@
 	{%for subfolder in page.sub_content %}
 		{%set subfolder_title = rendered_title[loop.index0] %}
 	<li class="media_in_list">
-		<a href="/plugin?path={{subfolder.url | urlencode}}&parent_path={{data_url | urlencode}}">
+		<a href="/plugin?path={{subfolder.url | safe | urlencode}}&parent_path={{data_url | safe | urlencode}}">
 			<div class="subelem_title">{{subfolder_title | safe}}</div>
 			{# select the art to display (if any) #}
 			{% if subfolder.listitem.arts["poster"] %}
@@ -46,7 +46,7 @@
 		{% if is_playable %}
 			{% if plugin_type == "audio" %}
 				<audio class="audiopreview" audiopreview_nb="{{loop.index0}}" preload="{% if loop.index0 == 0 %}auto{% else %}none{%endif%}" controls>
-					<source src = "/get_media?path={{subfolder.url | urlencode}}" />
+					<source src = "/get_media?path={{subfolder.url | safe | urlencode}}" />
 				</audio>
 			{% endif %}
 		{% endif %}

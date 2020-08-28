@@ -19,7 +19,7 @@
 <ul>
 	{%for plugin_data in plugins_to_show %}
 	<li>
-		<a href="/plugin?path={{plugin_data[1] | urlencode}}">{{plugin_data[0]}}</a>
+		<a href="/plugin?path={{plugin_data[1] | safe | urlencode}}">{{plugin_data[0]}}</a>
 	</li>
 	{%endfor%}
 </ul>

@@ -78,7 +78,6 @@ struct PageRenderPlugin {
 //TODO: make some merge between the folder and media part (including getting label from parent)
 #[get("/plugin?<path>&<parent_path>")]
 fn render_plugin(kodi: State<Kodi>, path: String, parent_path: Option<String>) -> Template {
-    let path = html_escape::decode_html_entities(&path).to_string();
     let mut splited = path.split('.');
     splited.next();
     let plugin_type = match splited.next() {
@@ -91,8 +90,6 @@ fn render_plugin(kodi: State<Kodi>, path: String, parent_path: Option<String>) -
             match page.resolved_listitem.as_mut() {
                 Some(mut resolved_listitem) => {
                     if let Some(parent_path) = parent_path {
-                        let parent_path =
-                            html_escape::decode_html_entities(&parent_path).to_string();
                         match kodi.invoke_sandbox(&parent_path) {
                             Ok(value) => {
                                 for sub_content in value.sub_content {
@@ -168,7 +165,6 @@ impl<'r> Responder<'r> for MediaResponse {
 //TODO: merge this with server_local_media
 #[get("/get_media?<path>")]
 fn redirect_media(kodi: State<Kodi>, path: String) -> Option<MediaResponse> {
-    let path = html_escape::decode_html_entities(&path).to_string();
     match kodi.invoke_sandbox(&path) {
         Ok(media_data) => match media_data.resolved_listitem {
             Some(resolved_listitem) => match resolved_listitem.path {
