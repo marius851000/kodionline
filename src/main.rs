@@ -3,7 +3,7 @@
 extern crate rocket;
 use rocket::State;
 
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 
 use rocket_contrib::serve::StaticFiles;
 use rocket_contrib::templates::Template;
@@ -17,30 +17,19 @@ use std::fs::File;
 
 #[derive(Serialize)]
 struct PageIndex {
-    plugins_to_show: Vec<(&'static str, &'static str)>,
+    plugins_to_show: Vec<(String, String)>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct Setting {
+    plugins_to_show: Vec<(String, String)>
 }
 
 #[get("/")]
-fn render_index() -> Template {
-    let plugins_to_show = vec![
-        (
-            "need for ponies videos",
-            "plugin://plugin.video.needforponies/?",
-        ),
-        (
-            "need for ponies audios",
-            "plugin://plugin.audio.needforponies/?",
-        ),
-        (
-            "local mirror (audio)",
-            "plugin://plugin.audio.local_mirror/?",
-        ),
-        (
-            "local mirror (video)",
-            "plugin://plugin.video.local_mirror/?",
-        ),
-    ];
-    let page = PageIndex { plugins_to_show };
+fn render_index(setting: State<Setting>) -> Template {
+    let page = PageIndex {
+        plugins_to_show: setting.plugins_to_show.clone()
+    };
     Template::render("index", page)
 }
 
@@ -193,14 +182,17 @@ fn server_local_media(kodi: State<Kodi>, path: String) -> Option<File> {
     }
 }
 
-//TODO: cache
 #[get("/")]
 fn main() {
     let kodi = Kodi::new("~/.kodi".into()).unwrap();
 
+    let setting_file = File::open("./setting.json").unwrap(); //TODO: default value if file doesn't exist
+    let setting: Setting = serde_json::from_reader(setting_file).unwrap();
+
     rocket::ignite()
-        .attach(Template::fairing())
         .manage(kodi)
+        .manage(setting)
+        .attach(Template::fairing())
         .mount(
             "/",
             routes![
@@ -212,8 +204,4 @@ fn main() {
         )
         .mount("/static", StaticFiles::from("static"))
         .launch();
-    //let result = kodi
-    //    .invoke_sandbox("plugin://plugin.video.needforponies/?")
-    //    .unwrap();
-    //println!("{:?}", result);
 }
