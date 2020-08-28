@@ -36,3 +36,7 @@
 	<!--todo: subtitles-->
 </ul>
 {%endblock content%}
+
+{%block footer_addition%}
+<p>kodi plugin url : {{data_url}}</p>
+{%endblock%}

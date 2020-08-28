@@ -60,3 +60,7 @@
 	<script type="text/javascript" src="/static/musicplayer.js"></script>
 {% endif %}
 {%endblock content%}
+
+{%block footer_addition%}
+<p>kodi plugin url : {{data_url}}</p>
+{%endblock%}

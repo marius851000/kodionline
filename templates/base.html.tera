@@ -16,6 +16,7 @@
 			{%block content%}{%endblock content%}
 		</div>
 		<div id="footer">
+			{%block footer_addition%}{%endblock footer_addition%}
 			<p>website programed by marius851000. Some data displayed on this site are not mine, namely nearly all data provided by the kodi's plugins</p>
 		</div>
 	</body>
