@@ -18,7 +18,7 @@ pub struct SubContent {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ListItem {
-    pub label: String,
+    pub label: Option<String>,
     pub path: Option<String>,
     pub arts: HashMap<String, Option<String>>,
     //TODO: info, category, properties
@@ -29,7 +29,10 @@ pub struct ListItem {
 
 impl ListItem {
     pub fn get_display_text(&self) -> String {
-        self.label.clone()
+        if let Some(value) = self.label.clone() {
+            return value
+        };
+        return "unnamed".into()
     }
 }
 
