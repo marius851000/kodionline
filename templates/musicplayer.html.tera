@@ -10,7 +10,7 @@
 		{% set music_source = music_data[1] %}
 		<li>
 			<p>{{music_name}}</p>
-			<audio id="musicplayer_music{{loop.index0}}" musicplayer_element_nb="{{loop.index0}}" preload="{% if loop.index0 == 0 %}auto{%else%}metadata{%endif%}" controls>
+			<audio id="musicplayer_music{{loop.index0}}" musicplayer_element_nb="{{loop.index0}}" preload="{% if loop.index0 == 0 %}auto{%else%}none{%endif%}" controls>
 				<source src="{{music_source}}" />
 			</audio>
 		</li>

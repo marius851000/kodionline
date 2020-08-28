@@ -21,6 +21,9 @@ use std::fs::File;
 
 use rayon::prelude::*;
 
+use rocket::response::{self, Redirect, Responder};
+use rocket::request::Request;
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Setting {
     plugins_to_show: Vec<(String, String)>,
@@ -188,6 +191,7 @@ fn render_musicplayer(kodi: State<Kodi>, path: String) -> Template {
                 // check if the media is playable
                 .filter(|sub_media| {
                     let mut isplayable = false;
+                    //TODO: implement this test as ListItem.is_playable
                     for isplayable_key in &possible_playable_value {
                         if let Some(isplayable_value) =
                             sub_media.listitem.properties.get(isplayable_key)
@@ -232,10 +236,9 @@ fn render_musicplayer(kodi: State<Kodi>, path: String) -> Template {
 }
 
 #[get("/media?<path>")]
-fn server_local_media(kodi: State<Kodi>, path: String) -> Option<File> {
+fn serve_local_media(kodi: State<Kodi>, path: String) -> Option<File> {
     //TODO: check it is in permitted area
     let path = html_escape::decode_html_entities(&path).to_string();
-    println!("requested file for {:?}", path);
     match kodi.invoke_sandbox(&path) {
         Ok(media_list) => match media_list.resolved_listitem {
             Some(resolved_listitem) => match resolved_listitem.path {
@@ -256,7 +259,39 @@ fn server_local_media(kodi: State<Kodi>, path: String) -> Option<File> {
     }
 }
 
-#[get("/")]
+enum MediaResponse {
+    Redirect(Redirect)
+}
+
+impl<'r> Responder<'r> for MediaResponse {
+    fn respond_to(self, request: &Request) -> response::Result<'r> {
+        match self {
+            Self::Redirect(r) => r.respond_to(request)
+        }
+    }
+}
+
+//TODO: merge this with server_local_media
+#[get("/get_media?<path>")]
+fn redirect_media(kodi: State<Kodi>, path: String) -> Option<MediaResponse> {
+    let path = html_escape::decode_html_entities(&path).to_string();
+    match kodi.invoke_sandbox(&path) {
+        Ok(media_data) => match media_data.resolved_listitem {
+            Some(resolved_listitem) => match resolved_listitem.path {
+                Some(path) => {
+                    Some(MediaResponse::Redirect(Redirect::to(path)))
+                },
+                None => None,
+            },
+            None => None,
+        },
+        Err(err) => {
+            println!("error {:?} while serving {}", err, path);
+            None
+        },
+    }
+}
+
 fn main() {
     let setting: Setting = match File::open("./setting.json") {
         Ok(file) => serde_json::from_reader(file).unwrap(),
@@ -280,7 +315,8 @@ fn main() {
                 render_index,
                 render_plugin,
                 render_musicplayer,
-                server_local_media
+                serve_local_media,
+                redirect_media
             ],
         )
         .mount("/static", StaticFiles::from("static"))
