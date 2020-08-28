@@ -23,7 +23,7 @@ use std::fs::File;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Setting {
-    plugins_to_show: Vec<(String, String)>,
+    plugins_to_show: Vec<(String, String)>, //label, path
     kodi_path: String,
     python_command: String,
 }
@@ -35,6 +35,17 @@ impl Default for Setting {
             kodi_path: "~/.kodi".into(),
             python_command: "python3".into(),
         }
+    }
+}
+
+impl Setting {
+    fn get_label_for_path(&self, path: &str) -> Option<String> {
+        for (label, analyzed_path) in self.plugins_to_show.iter() {
+            if path == analyzed_path {
+                return Some(label.clone());
+            };
+        };
+        return None
     }
 }
 
@@ -74,7 +85,7 @@ struct PageRenderPlugin {
 
 //TODO: get label for first level data
 #[get("/plugin?<path>&<parent_path>")]
-fn render_plugin(kodi: State<Kodi>, path: String, parent_path: Option<String>) -> Template {
+fn render_plugin(kodi: State<Kodi>, setting: State<Setting>, path: String, parent_path: Option<String>) -> Template {
     let mut splited = path.split('.');
     splited.next();
     let plugin_type = match splited.next() {
@@ -140,11 +151,16 @@ fn render_plugin(kodi: State<Kodi>, path: String, parent_path: Option<String>) -
                         .map(|content| content.listitem.get_display_html())
                         .collect();
 
+                    let display_text = match subcontent_from_parent {
+                        Some(subcontent) => Some(subcontent.listitem.get_display_html()),
+                        None => setting.get_label_for_path(&path),
+                    };
+
                     let data = PageRenderPlugin {
                         page,
                         data_url: path,
                         plugin_type,
-                        display_text: subcontent_from_parent.map(|x| x.listitem.get_display_html()),
+                        display_text,
                         rendered_title,
                     };
                     Template::render("plugin_folder", data)
