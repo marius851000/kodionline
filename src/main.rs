@@ -68,8 +68,8 @@ struct PageRenderPlugin {
     plugin_type: String,
 }
 
-#[get("/plugin?<path>")]
-fn render_plugin(kodi: State<Kodi>, path: String) -> Template {
+#[get("/plugin?<path>&<parent_path>")]
+fn render_plugin(kodi: State<Kodi>, path: String, parent_path: Option<String>) -> Template {
     let path = html_escape::decode_html_entities(&path).to_string();
     let mut splited = path.split('.');
     splited.next();
@@ -82,6 +82,22 @@ fn render_plugin(kodi: State<Kodi>, path: String) -> Template {
         Ok(mut page) => {
             match page.resolved_listitem.as_mut() {
                 Some(mut resolved_listitem) => {
+                    if let Some(parent_path) = parent_path {
+                        let parent_path = html_escape::decode_html_entities(&parent_path).to_string();
+                        match kodi.invoke_sandbox(&parent_path) {
+                            Ok(value) => {
+                                for sub_content in value.sub_content {
+                                    if sub_content.url == path {
+                                        resolved_listitem.extend(sub_content.listitem.clone());
+                                    };
+                                    break
+                                }
+                            },
+                            Err(err) => {
+                                println!("got {:?} while trying to get the parent path {}", err, parent_path);
+                            }
+                        }
+                    };
                     // contain a media (prefered over mediatype)
                     let url = match &resolved_listitem.path {
                         Some(url) => {

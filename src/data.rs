@@ -34,6 +34,20 @@ impl ListItem {
         };
         return "unnamed".into()
     }
+
+    pub fn extend(&mut self, other: Self) {
+        if self.label.is_none() {
+            self.label = other.label.clone();
+        };
+        if self.path.is_none() {
+            self.path = other.path.clone();
+        };
+        self.arts.extend(other.arts);
+        self.info.extend(other.info);
+        self.subtitles.extend(other.subtitles);
+        self.subtitles.dedup();
+        self.properties.extend(other.properties);
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -43,9 +57,29 @@ pub struct Info {
     #[serde(default)]
     genre: Option<String>,
     #[serde(default)]
-    season: u64,
+    season: Option<u64>,
     #[serde(default)]
-    episode: u64,
+    episode: Option<u64>,
     #[serde(default)]
-    mediatype: String,
+    mediatype: Option<String>,
+}
+
+impl Info {
+    pub fn extend(&mut self, other: Self) {
+        if self.plot.is_none() {
+            self.plot = other.plot;
+        };
+        if self.genre.is_none() {
+            self.genre = other.genre;
+        };
+        if self.season.is_none() {
+            self.season = other.season;
+        };
+        if self.episode.is_none() {
+            self.episode = other.episode;
+        };
+        if self.mediatype.is_none() {
+            self.mediatype = other.mediatype;
+        };
+    }
 }

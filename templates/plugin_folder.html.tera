@@ -7,7 +7,7 @@
 <ul class="list_media">
 	{%for subfolder in page.sub_content %}
 	<li class="media_in_list">
-		<a href="/plugin?path={{subfolder.url | urlencode}}">
+		<a href="/plugin?path={{subfolder.url | urlencode}}&parent_path={{data_url | urlencode}}">
 			<div class="subelem_title">{{subfolder.listitem.label}}</div>
 			{# select the art to display (if any) #}
 			{% if subfolder.listitem.arts["poster"] %}
