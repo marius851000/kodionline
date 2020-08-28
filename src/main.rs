@@ -3,7 +3,7 @@
 extern crate rocket;
 use rocket::State;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use rocket_contrib::serve::StaticFiles;
 use rocket_contrib::templates::Template;
@@ -11,24 +11,36 @@ use rocket_contrib::templates::Template;
 use kodionline::data;
 use kodionline::Kodi;
 
+use std::io;
+
 use rocket::http::uri::Uri;
 
 use std::fs::File;
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct Setting {
+    plugins_to_show: Vec<(String, String)>,
+    kodi_path: String,
+}
+
+impl Default for Setting {
+    fn default() -> Self {
+        Self {
+            plugins_to_show: Vec::new(),
+            kodi_path: "~/.kodi".into(),
+        }
+    }
+}
 
 #[derive(Serialize)]
 struct PageIndex {
     plugins_to_show: Vec<(String, String)>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-struct Setting {
-    plugins_to_show: Vec<(String, String)>
-}
-
 #[get("/")]
 fn render_index(setting: State<Setting>) -> Template {
     let page = PageIndex {
-        plugins_to_show: setting.plugins_to_show.clone()
+        plugins_to_show: setting.plugins_to_show.clone(),
     };
     Template::render("index", page)
 }
@@ -131,7 +143,9 @@ fn render_musicplayer(kodi: State<Kodi>, path: String) -> Template {
                     ("loading failed".into(), "".into())
                 };
                 musics.push(match &sub_media.listitem.path {
-                    Some(media_url) => (sub_media.listitem.get_display_text(), media_url.to_string()),
+                    Some(media_url) => {
+                        (sub_media.listitem.get_display_text(), media_url.to_string())
+                    }
                     None => match kodi.invoke_sandbox(&sub_media.url) {
                         Ok(submedia_loaded) => match submedia_loaded.resolved_listitem {
                             Some(resolved_listitem) => match &resolved_listitem.path {
@@ -184,10 +198,15 @@ fn server_local_media(kodi: State<Kodi>, path: String) -> Option<File> {
 
 #[get("/")]
 fn main() {
-    let kodi = Kodi::new("~/.kodi".into()).unwrap();
+    let setting: Setting = match File::open("./setting.json") {
+        Ok(file) => serde_json::from_reader(file).unwrap(),
+        Err(err) => match err.kind() {
+            io::ErrorKind::NotFound => Setting::default(),
+            err => panic!(err),
+        },
+    };
 
-    let setting_file = File::open("./setting.json").unwrap(); //TODO: default value if file doesn't exist
-    let setting: Setting = serde_json::from_reader(setting_file).unwrap();
+    let kodi = Kodi::new(setting.kodi_path.clone()).unwrap();
 
     rocket::ignite()
         .manage(kodi)
