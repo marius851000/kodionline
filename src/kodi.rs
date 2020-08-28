@@ -30,15 +30,15 @@ pub enum KodiError {
 impl fmt::Display for KodiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            KodiError::CallError(status) => write!(
+            Self::CallError(status) => write!(
                 f,
                 "kodi returned with the status {:?}. Maybe the url is invalid, or can't be emulated. If you followed a link on this site, contact the webmaster with the source url and this url.",
                 status
             ),
-            KodiError::InvalidGeneratedCommand => write!(f, "internal error: the generated command is invalid"),
-            KodiError::CantCreateTemporyDir(_) => write!(f, "internal error: can't create a tempory folder"),
-            KodiError::CantOpenResultFile(_) => write!(f, "internal error: can't open the result file"),
-            KodiError::CantParseResultFile(_) => write!(f, "internal error: can't parse the result file"),
+            Self::InvalidGeneratedCommand => write!(f, "internal error: the generated command is invalid"),
+            Self::CantCreateTemporyDir(_) => write!(f, "internal error: can't create a tempory folder"),
+            Self::CantOpenResultFile(_) => write!(f, "internal error: can't open the result file"),
+            Self::CantParseResultFile(_) => write!(f, "internal error: can't parse the result file"),
         }
     }
 }
@@ -46,9 +46,9 @@ impl fmt::Display for KodiError {
 impl Error for KodiError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            KodiError::CantCreateTemporyDir(err) => Some(err),
-            KodiError::CantOpenResultFile(err) => Some(err),
-            KodiError::CantParseResultFile(err) => Some(err),
+            Self::CantCreateTemporyDir(err) => Some(err),
+            Self::CantOpenResultFile(err) => Some(err),
+            Self::CantParseResultFile(err) => Some(err),
             _ => None,
         }
     }
@@ -72,9 +72,9 @@ impl Kodi {
     /// use kodionline::Kodi;
     /// let kodi = Kodi::new("~/.kodi".to_string()).unwrap();
     /// ```
-    pub fn new(path: String) -> Result<Kodi, KodiError> {
-        Ok(Kodi {
-            kodi_config_path: shellexpand::tilde(&path).into(),
+    pub fn new(path: &str) -> Result<Self, KodiError> {
+        Ok(Self {
+            kodi_config_path: shellexpand::tilde(path).into(),
             cache: Mutex::new(TimedCache::with_lifespan_and_capacity(3600, 500)),
             python_command: "python2".into(),
             use_cache: true,
@@ -98,6 +98,16 @@ impl Kodi {
         ]
     }
 
+    /// Get the data for a kodi addon path.
+    ///
+    /// the ``plugin_path`` should be under the form ``plugin://<plugin_id>/<url>``. ``plugin_id`` may be, for example, ``plugin.video.youtube``.
+    ///
+    /// It will use the kodi-dl library to do this, and will sandbox the call (not actually implemented)
+    ///
+    /// this function also use a timed cache if [`set_use_cache`] have been called with ``true``.
+    ///
+    /// # Errors
+    /// this function return a [`KodiError`] when an error occur. there may be multiple kind of error, the most important one [`KodiError::CallError`] for when the addon crashed.
     pub fn invoke_sandbox(&self, plugin_path: &str) -> Result<Page, KodiError> {
         if self.use_cache {
             match self.cache.lock() {

@@ -1,6 +1,7 @@
 // ignore color, as it may cause contrast issue
 static IGNORE_COLOR: bool = true;
 
+#[must_use]
 pub fn format_to_string(source: &str) -> String {
     let mut escaped = String::new();
     html_escape::encode_text_to_string(source, &mut escaped);

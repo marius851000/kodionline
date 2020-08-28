@@ -29,6 +29,7 @@ pub struct ListItem {
 }
 
 impl ListItem {
+    #[must_use]
     pub fn get_display_html(&self) -> String {
         if let Some(value) = &self.label {
             return format_to_string(value);
