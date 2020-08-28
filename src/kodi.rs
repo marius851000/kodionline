@@ -74,7 +74,7 @@ impl Kodi {
     pub fn new(path: String) -> Result<Kodi, KodiError> {
         Ok(Kodi {
             kodi_config_path: shellexpand::tilde(&path).into(),
-            cache: Mutex::new(TimedCache::with_lifespan_and_capacity(3600, 5000)),
+            cache: Mutex::new(TimedCache::with_lifespan_and_capacity(3600, 500)),
             python_command: "python2".into(),
         })
     }
