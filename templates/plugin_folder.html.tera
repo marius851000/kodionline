@@ -49,7 +49,9 @@
 </ul>
 
 {% if contain_playable_element %}
-	<button id="play_all">play all music syncronously (take care, may be loud and/or laggy)</a>
-	<script type="text/javascript" src="/static/musicplayer.js"></script>
+	{% if plugin_type == "audio" %}
+		<button id="play_all">play all music syncronously (take care, may be loud and/or laggy)</a>
+		<script type="text/javascript" src="/static/musicplayer.js"></script>
+	{% endif %}
 {% endif %}
 {%endblock content%}
