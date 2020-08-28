@@ -20,7 +20,7 @@ pub struct SubContent {
 pub struct ListItem {
     pub label: String,
     pub path: Option<String>,
-    pub arts: HashMap<String, String>,
+    pub arts: HashMap<String, Option<String>>,
     //TODO: info, category, properties
     pub info: Info,
     pub subtitles: Vec<String>,
