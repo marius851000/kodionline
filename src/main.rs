@@ -15,8 +15,6 @@ use kodionline::Kodi;
 
 use std::io;
 
-use rocket::http::uri::Uri;
-
 use std::fs::File;
 
 use rayon::prelude::*;
@@ -112,9 +110,7 @@ fn render_plugin(kodi: State<Kodi>, path: String, parent_path: Option<String>) -
                     };
                     // contain a media (prefered over mediatype)
                     let url = match &resolved_listitem.path {
-                        Some(url) => {
-                            choose_local_or_external_media_url(url.to_string(), path.as_str())
-                        }
+                        Some(url) => url.clone(),
                         None => return generate_error_page("no media found for this page".into()),
                     };
                     let display_text = Some(resolved_listitem.get_display_html());
@@ -132,7 +128,7 @@ fn render_plugin(kodi: State<Kodi>, path: String, parent_path: Option<String>) -
                     // contain a folder
                     let rendered_title = page
                         .sub_content
-                        .iter()
+                        .par_iter()
                         .map(|content| content.listitem.get_display_html())
                         .collect();
                     let data = PageRenderPlugin {
@@ -153,57 +149,29 @@ fn render_plugin(kodi: State<Kodi>, path: String, parent_path: Option<String>) -
     }
 }
 
-fn choose_local_or_external_media_url(distant_url: String, path: &str) -> String {
-    match distant_url.chars().next() {
-        Some(first_char) => {
-            if first_char == '/' {
-                format!("/media?path={}", Uri::percent_encode(&path))
-            } else {
-                distant_url
-            }
-        }
-        None => "".into(),
-    }
-}
-
 #[derive(Serialize)]
 struct PageMusicPlayer {
     musics: Vec<(String, String)>, //name, local (false) or online (true), plugin_path/url
 }
 
-#[get("/media?<path>")]
-fn serve_local_media(kodi: State<Kodi>, path: String) -> Option<File> {
-    //TODO: check it is in permitted area
-    let path = html_escape::decode_html_entities(&path).to_string();
-    match kodi.invoke_sandbox(&path) {
-        Ok(media_list) => match media_list.resolved_listitem {
-            Some(resolved_listitem) => match resolved_listitem.path {
-                Some(data_path) => {
-                    match File::open(data_path) {
-                        Ok(value) => Some(value),
-                        Err(err) => {
-                            println!("error: can't open a file due to {:?}", err); //TODO: make this more visible. It shouldn't happen at normal time
-                            None
-                        }
-                    }
-                }
-                None => None,
-            },
-            None => None,
-        },
-        Err(_) => None,
-    }
-}
-
 enum MediaResponse {
-    Redirect(Redirect)
+    Redirect(Redirect),
+    File(File)
 }
 
 impl<'r> Responder<'r> for MediaResponse {
     fn respond_to(self, request: &Request) -> response::Result<'r> {
         match self {
-            Self::Redirect(r) => r.respond_to(request)
+            Self::Redirect(r) => r.respond_to(request),
+            Self::File(f) => f.respond_to(request)
         }
+    }
+}
+
+fn is_local_path(path: &str) -> bool {
+    match path.chars().next() {
+        Some('/') => true,
+        _ => false,
     }
 }
 
@@ -215,7 +183,18 @@ fn redirect_media(kodi: State<Kodi>, path: String) -> Option<MediaResponse> {
         Ok(media_data) => match media_data.resolved_listitem {
             Some(resolved_listitem) => match resolved_listitem.path {
                 Some(path) => {
-                    Some(MediaResponse::Redirect(Redirect::to(path)))
+                    if is_local_path(&path) {
+                        //TODO: check if the file is permitted to be read
+                        Some(MediaResponse::File(match File::open(path) {
+                            Ok(file) => file,
+                            Err(err) => {
+                                println!("failed to open the local file due to {:?}", err);
+                                return None
+                            }
+                        }))
+                    } else {
+                        Some(MediaResponse::Redirect(Redirect::to(path)))
+                    }
                 },
                 None => None,
             },
@@ -250,7 +229,6 @@ fn main() {
             routes![
                 render_index,
                 render_plugin,
-                serve_local_media,
                 redirect_media
             ],
         )
