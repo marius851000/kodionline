@@ -1,5 +1,11 @@
 {% extends "base" %}
-{%block title%}{{display_text}}{%endblock title%}
+{%block title%}
+	{% if display_text %}
+		{{display_text | safe}}
+	{% else %}
+		{{data_url}}
+	{%endif%}
+{%endblock title%}
 
 {%block content%}
 
@@ -25,16 +31,24 @@
 				<p class="plot">{{subfolder.listitem.info.plot}}</p>
 			{% endif %}
 
-			{% if subfolder.listitem.properties["IsPlayable"] %}
-				{% if subfolder.listitem.properties["IsPlayable"] == "true" %}
-					{% set_global playable_element_number = playable_element_number + 1 %}
+			{% set_global added_this_one = false %}
+			{% for possible_playable in ["IsPlayable", "isPlayable", "isplayable"] %}
+				{% if subfolder.listitem.properties[possible_playable] %}
+					{% if subfolder.listitem.properties[possible_playable] == "true" %}
+						{%if added_this_one == false %}
+							{% set_global playable_element_number = playable_element_number + 1 %}
+							{% set_global added_this_one = true %}
+						{%endif%}
+					{%endif%}
 				{%endif%}
-			{%endif%}
+			{%endfor%}
+
 		</a>
 	</li>
 	{%endfor%}
 </ul>
 
+{{playable_element_number}}
 {% if playable_element_number > 0 %}
 	{% if plugin_type == "audio" %}
 		<!-- js music player -->

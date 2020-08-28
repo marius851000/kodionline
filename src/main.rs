@@ -158,16 +158,33 @@ struct PageMusicPlayer {
     musics: Vec<(String, String)>, //name, local (false) or online (true), plugin_path/url
 }
 
+
 #[get("/musicplayer?<path>")]
 fn render_musicplayer(kodi: State<Kodi>, path: String) -> Template {
+    let possible_playable_value: Vec<String> = vec![
+        "isPlayable".into(),
+        "IsPlayable".into(),
+        "isplayable".into(),
+    ];
+
     let path = html_escape::decode_html_entities(&path).to_string();
     match kodi.invoke_sandbox(&path) {
         Ok(media_list) => {
             let mut musics = Vec::new();
             for sub_media in media_list.sub_content.iter() {
-                if sub_media.listitem.properties["IsPlayable"] != "true" {
-                    continue;
+                let mut isplayable = false;
+                for isplayable_key in &possible_playable_value {
+                    if let Some(value) = sub_media.listitem.properties.get(isplayable_key) {
+                        if value == "true" {
+                            isplayable = true;
+                            break;
+                        }
+                    };
                 };
+                if !isplayable {
+                    continue
+                }
+
                 fn failed_music() -> (String, String) {
                     ("loading failed".into(), "".into())
                 };
