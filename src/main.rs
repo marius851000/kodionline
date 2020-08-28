@@ -10,19 +10,16 @@ use serde::{Deserialize, Serialize};
 use rocket_contrib::serve::StaticFiles;
 use rocket_contrib::templates::Template;
 
-use kodionline::data;
-use kodionline::Kodi;
+use kodionline::{data, Kodi, is_local_path};
 
-use std::io;
-
-use std::fs::File;
 
 use rayon::prelude::*;
 
 use rocket::request::Request;
 use rocket::response::{self, Redirect, Responder};
 
-use kodionline::is_local_path;
+use std::io;
+use std::fs::File;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Setting {
@@ -75,7 +72,7 @@ struct PageRenderPlugin {
     rendered_title: Vec<String>,
 }
 
-//TODO: make some merge between the folder and media part (including getting label from parent)
+//TODO: get label for first level data
 #[get("/plugin?<path>&<parent_path>")]
 fn render_plugin(kodi: State<Kodi>, path: String, parent_path: Option<String>) -> Template {
     let mut splited = path.split('.');
@@ -85,33 +82,45 @@ fn render_plugin(kodi: State<Kodi>, path: String, parent_path: Option<String>) -
         None => return generate_error_page("impossible to get type of extension".to_string()),
     };
 
+    let subcontent_from_parent = if let Some(parent_path) = parent_path {
+        match kodi.invoke_sandbox(&parent_path) {
+            Ok(parent_page) => {
+                let mut result = None;
+                for sub_content in parent_page.sub_content {
+                    if sub_content.url == path {
+                        result = Some(sub_content);
+                        break;
+                    };
+                };
+                result
+            },
+            Err(err) => {
+                println!(
+                    "got {:?} while trying to get the parent path {}",
+                    err, parent_path
+                );
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     match kodi.invoke_sandbox(&path) {
         Ok(mut page) => {
             match page.resolved_listitem.as_mut() {
+                // contain a media
                 Some(mut resolved_listitem) => {
-                    if let Some(parent_path) = parent_path {
-                        match kodi.invoke_sandbox(&parent_path) {
-                            Ok(value) => {
-                                for sub_content in value.sub_content {
-                                    if sub_content.url == path {
-                                        resolved_listitem.extend(sub_content.listitem);
-                                        break;
-                                    };
-                                }
-                            }
-                            Err(err) => {
-                                println!(
-                                    "got {:?} while trying to get the parent path {}",
-                                    err, parent_path
-                                );
-                            }
-                        }
-                    };
-                    // contain a media (prefered over mediatype)
+
+                    if let Some(subcontent_from_parent) = subcontent_from_parent {
+                        resolved_listitem.extend(subcontent_from_parent.listitem);
+                    }
+
                     let url = match &resolved_listitem.path {
                         Some(url) => url.clone(),
                         None => return generate_error_page("no media found for this page".into()),
                     };
+
                     let display_text = Some(resolved_listitem.get_display_html());
                     resolved_listitem.path = Some(url);
                     let data = PageRenderPlugin {
@@ -123,18 +132,19 @@ fn render_plugin(kodi: State<Kodi>, path: String, parent_path: Option<String>) -
                     };
                     Template::render("plugin_media", data)
                 }
+                // contain a folder
                 None => {
-                    // contain a folder
                     let rendered_title = page
                         .sub_content
                         .par_iter()
                         .map(|content| content.listitem.get_display_html())
                         .collect();
+
                     let data = PageRenderPlugin {
                         page,
                         data_url: path,
                         plugin_type,
-                        display_text: None,
+                        display_text: subcontent_from_parent.map(|x| x.listitem.get_display_html()),
                         rendered_title,
                     };
                     Template::render("plugin_folder", data)
