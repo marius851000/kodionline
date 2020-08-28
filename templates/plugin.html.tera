@@ -1,0 +1,14 @@
+{%extends "base"%}
+
+{%block title%}
+	{% if display_text %}
+		{{display_text | safe}}
+	{% else %}
+		{{data_url}}
+	{%endif%}
+{%endblock title%}
+
+
+{%block footer_addition%}
+	<p>kodi plugin url : {{data_url}}</p>
+{%endblock%}

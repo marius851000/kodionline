@@ -1,7 +1,4 @@
-{% extends "base" %}
-{%block title%}
-	{{display_text | safe}}
-{%endblock title%}
+{% extends "plugin" %}
 
 {%block content%}
 

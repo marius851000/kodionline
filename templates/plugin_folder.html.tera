@@ -1,11 +1,4 @@
-{% extends "base" %}
-{%block title%}
-	{% if display_text %}
-		{{display_text | safe}}
-	{% else %}
-		{{data_url}}
-	{%endif%}
-{%endblock title%}
+{% extends "plugin" %}
 
 {%block content%}
 
@@ -60,7 +53,3 @@
 	<script type="text/javascript" src="/static/musicplayer.js"></script>
 {% endif %}
 {%endblock content%}
-
-{%block footer_addition%}
-<p>kodi plugin url : {{data_url}}</p>
-{%endblock%}
