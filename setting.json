@@ -5,5 +5,6 @@
 		["local mirror (video)", "plugin://plugin.video.local_mirror/?"],
 		["local mirror (audio)", "plugin://plugin.audio.local_mirror/?"]
 	],
-	"kodi_path": "~/.kodi"
+	"kodi_path": "~/.kodi",
+	"python_command": "python2"
 }

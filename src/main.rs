@@ -21,6 +21,7 @@ use std::fs::File;
 struct Setting {
     plugins_to_show: Vec<(String, String)>,
     kodi_path: String,
+    python_command: String,
 }
 
 impl Default for Setting {
@@ -28,6 +29,7 @@ impl Default for Setting {
         Self {
             plugins_to_show: Vec::new(),
             kodi_path: "~/.kodi".into(),
+            python_command: "python3".into(),
         }
     }
 }
@@ -206,7 +208,8 @@ fn main() {
         },
     };
 
-    let kodi = Kodi::new(setting.kodi_path.clone()).unwrap();
+    let mut kodi = Kodi::new(setting.kodi_path.clone()).unwrap();
+    kodi.set_python_command(setting.python_command.clone());
 
     rocket::ignite()
         .manage(kodi)

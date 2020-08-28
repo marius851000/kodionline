@@ -60,6 +60,7 @@ impl Error for KodiError {
 pub struct Kodi {
     kodi_config_path: String,
     cache: Mutex<TimedCache<String, Page>>,
+    python_command: String,
 }
 
 impl Kodi {
@@ -74,7 +75,12 @@ impl Kodi {
         Ok(Kodi {
             kodi_config_path: shellexpand::tilde(&path).into(),
             cache: Mutex::new(TimedCache::with_lifespan_and_capacity(3600, 5000)),
+            python_command: "python2".into(),
         })
+    }
+
+    pub fn set_python_command(&mut self, command: String) {
+        self.python_command = command;
     }
 
     fn get_commands(&self, plugin_path: &str, tempory_file: &str) -> Vec<String> {
