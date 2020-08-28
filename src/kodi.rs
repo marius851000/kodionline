@@ -85,7 +85,7 @@ impl Kodi {
 
     fn get_commands(&self, plugin_path: &str, tempory_file: &str) -> Vec<String> {
         vec![
-            "python3".into(),
+            self.python_command.clone(),
             "kodi_interface.py".into(),
             self.kodi_config_path.clone(),
             plugin_path.into(),
