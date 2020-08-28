@@ -1,0 +1,8 @@
+{% extends "base" %}
+{%block title%}an error occured{%endblock title%}
+{%block content%}
+<div class="errormessage">
+	<p>the following error happened:</p>
+	<p>{{errormessage}}</p>
+</div>
+{%endblock content%}

@@ -1,0 +1,52 @@
+#header {
+	border-bottom-style: solid;
+	margin-top: 0;
+	margin-left: 0;
+	margin-right: 0;
+	margin-bottom: 1.5%;
+}
+
+#footer {
+	border-top-style: solid;
+	margin-top: 1.5%;
+}
+
+h1 {
+	text-align: center;
+}
+
+.errormessage {
+	border-style: solid;
+	border-color: black;
+	background-color: #8c0000;
+	color: white;
+	text-align: center;
+	width: 90%;
+	margin: 0 auto;
+}
+
+.list_media {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.media_in_list {
+	list-style-type: none;
+	border-style: solid;
+	border-radius: 10px;
+	padding-left: 10px;
+	padding-right: 10px;
+	margin: 15px;
+	background-color: #ddd;
+	max-width: 700px;
+}
+
+.subelem_title {
+	text-align: center;
+	font-size: large;
+}
+
+.plot {
+	color: black;
+	text-decoration: none;
+}

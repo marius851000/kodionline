@@ -1,0 +1,41 @@
+{% extends "base" %}
+{%block title%}
+	{% if page.resolved_listitem.label %}
+		{{page.resolved_listitem.label}}
+	{%else%}
+		{{data_url}}
+	{%endif%}
+{%endblock title%}
+
+{%block content%}
+
+<div class = "main_media">
+	{%if plugin_type == "video"%}
+		<video controls>
+			<source src="{{page.resolved_listitem.path}}" />
+			{#{% for subtitle in page.resolved_listitem.subtitles %}
+				<track kind="captions" src="{{subtitle}}" srclang="en" label="English"/>
+			{% endfor %}#}
+		</video>
+	{%elif plugin_type == "audio"%}
+		<audio controls>
+			<source src="{{page.resolved_listitem.path}}" />
+		</audio>
+	{%else%}
+		can't detect the type of media this content is. please download the file to play it
+	{%endif%}
+</div>
+<h2>download:</h2>
+<ul class="download">
+	<li>
+		<a href="{{page.resolved_listitem.path}}">{%-if plugin_type == "video"-%}
+			video
+		{%-elif plugin_type == "audio"-%}
+			audio
+		{%-else-%}
+			media
+		{%-endif-%}</a>
+	</li>
+	<!--todo: subtitles-->
+</ul>
+{%endblock content%}

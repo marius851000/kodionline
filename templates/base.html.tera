@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>kodi online</title>
+		<link rel="stylesheet" href="/static/kodionline.css" />
+	</head>
+	<body>
+		<div id="header">
+			<ul class="horizontallist">
+				<li><a href="/">main page</a></li>
+			</ul>
+			<h1>{%block title%}{%endblock title%}</h1>
+		</div>
+		<div id="content">
+			{%block content%}{%endblock content%}
+		</div>
+		<div id="footer">
+			<p>website programed by marius851000. Some data displayed on this site are not mine, namely nearly all data provided by the kodi's plugins</p>
+		</div>
+	</body>
+</html>

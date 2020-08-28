@@ -1,0 +1,47 @@
+{% extends "base" %}
+{%block title%}{{data_url}}{%endblock title%}
+
+{%block content%}
+
+{% set_global playable_element_number = 0 %}
+<ul class="list_media">
+	{%for subfolder in page.sub_content %}
+	<li class="media_in_list">
+		<a href="/plugin?path={{subfolder.url | urlencode}}">
+			<div class="subelem_title">{{subfolder.listitem.label}}</div>
+			{# select the art to display (if any) #}
+			{% if subfolder.listitem.arts["poster"] %}
+				{% set art_to_display = "poster" %}
+			{% elif subfolder.listitem.arts["thumb"] %}
+				{% set art_to_display = "thumb" %}
+			{% endif %}
+
+			{% if art_to_display %}
+				<img class="illustration" src="{{subfolder.listitem.arts[art_to_display]}}" />
+			{%endif%}
+
+			{% if subfolder.listitem.info.plot %}
+				<p class="plot">{{subfolder.listitem.info.plot}}</p>
+			{% endif %}
+
+			{% if subfolder.listitem.properties["IsPlayable"] %}
+				{% if subfolder.listitem.properties["IsPlayable"] == "true" %}
+					{% set_global playable_element_number = playable_element_number + 1 %}
+				{%endif%}
+			{%endif%}
+		</a>
+	</li>
+	{%endfor%}
+</ul>
+
+{% if playable_element_number > 0 %}
+	{% if plugin_type == "audio" %}
+		<!-- js music player -->
+		<div class="musicplayer_iframe">
+			<p>playlist of this folder</p>
+			<iframe width="100%" height="500px" src="/musicplayer?path={{data_url | urlencode}}" />
+		</div>
+	{%endif%}
+{% endif %}
+
+{%endblock content%}
