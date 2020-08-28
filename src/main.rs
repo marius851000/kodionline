@@ -171,70 +171,6 @@ struct PageMusicPlayer {
     musics: Vec<(String, String)>, //name, local (false) or online (true), plugin_path/url
 }
 
-#[get("/musicplayer?<path>")]
-fn render_musicplayer(kodi: State<Kodi>, path: String) -> Template {
-    let possible_playable_value: Vec<String> = vec![
-        "isPlayable".into(),
-        "IsPlayable".into(),
-        "isplayable".into(),
-    ];
-
-    let path = html_escape::decode_html_entities(&path).to_string();
-    match kodi.invoke_sandbox(&path) {
-        Ok(media_list) => {
-            fn failed_music() -> (String, String) {
-                ("loading failed".into(), "".into())
-            };
-            let musics = media_list
-                .sub_content
-                .par_iter()
-                // check if the media is playable
-                .filter(|sub_media| {
-                    let mut isplayable = false;
-                    //TODO: implement this test as ListItem.is_playable
-                    for isplayable_key in &possible_playable_value {
-                        if let Some(isplayable_value) =
-                            sub_media.listitem.properties.get(isplayable_key)
-                        {
-                            if isplayable_value == "true" {
-                                isplayable = true;
-                                break;
-                            }
-                        };
-                    }
-                    isplayable
-                })
-                .map(|sub_media| {
-                    //TODO: check if path is already known
-                    //TODO: check if media_url it point to an url or to a plugin://
-                    match kodi.invoke_sandbox(&sub_media.url) {
-                        Ok(submedia_loaded) => match submedia_loaded.resolved_listitem {
-                            Some(mut resolved_listitem) => {
-                                resolved_listitem.extend(sub_media.listitem.clone());
-                                match &resolved_listitem.path {
-                                    Some(path) => (
-                                        resolved_listitem.get_display_html(),
-                                        choose_local_or_external_media_url(
-                                            path.to_string(),
-                                            sub_media.url.as_str(),
-                                        ),
-                                    ),
-                                    None => failed_music(),
-                                }
-                            }
-                            None => failed_music(),
-                        },
-                        Err(_) => failed_music(),
-                    }
-                })
-                .collect();
-            let data = PageMusicPlayer { musics };
-            Template::render("musicplayer", data)
-        }
-        Err(err) => generate_error_page(format!("{}", err)),
-    }
-}
-
 #[get("/media?<path>")]
 fn serve_local_media(kodi: State<Kodi>, path: String) -> Option<File> {
     //TODO: check it is in permitted area
@@ -314,7 +250,6 @@ fn main() {
             routes![
                 render_index,
                 render_plugin,
-                render_musicplayer,
                 serve_local_media,
                 redirect_media
             ],
