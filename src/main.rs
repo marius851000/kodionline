@@ -10,16 +10,15 @@ use serde::{Deserialize, Serialize};
 use rocket_contrib::serve::StaticFiles;
 use rocket_contrib::templates::Template;
 
-use kodionline::{data, Kodi, is_local_path};
-
+use kodionline::{data, is_local_path, Kodi};
 
 use rayon::prelude::*;
 
 use rocket::request::Request;
 use rocket::response::{self, Redirect, Responder};
 
-use std::io;
 use std::fs::File;
+use std::io;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Setting {
@@ -44,8 +43,8 @@ impl Setting {
             if path == analyzed_path {
                 return Some(label.clone());
             };
-        };
-        return None
+        }
+        return None;
     }
 }
 
@@ -83,9 +82,13 @@ struct PageRenderPlugin {
     rendered_title: Vec<String>,
 }
 
-//TODO: get label for first level data
 #[get("/plugin?<path>&<parent_path>")]
-fn render_plugin(kodi: State<Kodi>, setting: State<Setting>, path: String, parent_path: Option<String>) -> Template {
+fn render_plugin(
+    kodi: State<Kodi>,
+    setting: State<Setting>,
+    path: String,
+    parent_path: Option<String>,
+) -> Template {
     let mut splited = path.split('.');
     splited.next();
     let plugin_type = match splited.next() {
@@ -102,9 +105,9 @@ fn render_plugin(kodi: State<Kodi>, setting: State<Setting>, path: String, paren
                         result = Some(sub_content);
                         break;
                     };
-                };
+                }
                 result
-            },
+            }
             Err(err) => {
                 println!(
                     "got {:?} while trying to get the parent path {}",
@@ -122,7 +125,6 @@ fn render_plugin(kodi: State<Kodi>, setting: State<Setting>, path: String, paren
             match page.resolved_listitem.as_mut() {
                 // contain a media
                 Some(mut resolved_listitem) => {
-
                     if let Some(subcontent_from_parent) = subcontent_from_parent {
                         resolved_listitem.extend(subcontent_from_parent.listitem);
                     }
@@ -188,7 +190,6 @@ impl<'r> Responder<'r> for MediaResponse {
     }
 }
 
-//TODO: merge this with server_local_media
 #[get("/get_media?<path>")]
 fn redirect_media(kodi: State<Kodi>, path: String) -> Option<MediaResponse> {
     match kodi.invoke_sandbox(&path) {

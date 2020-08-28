@@ -7,7 +7,6 @@ pub mod data;
 mod format;
 pub use format::format_to_string;
 
-
 pub fn is_local_path(path: &str) -> bool {
     matches!(path.chars().next(), Some('/'))
 }

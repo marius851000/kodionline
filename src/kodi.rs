@@ -74,7 +74,9 @@ impl Kodi {
     pub fn new(path: &str, cache_time: u64, cache_size: usize) -> Result<Self, KodiError> {
         Ok(Self {
             kodi_config_path: shellexpand::tilde(path).into(),
-            cache: Mutex::new(TimedCache::with_lifespan_and_capacity(cache_time, cache_size)),
+            cache: Mutex::new(TimedCache::with_lifespan_and_capacity(
+                cache_time, cache_size,
+            )),
             python_command: "python2".into(),
         })
     }
@@ -113,7 +115,7 @@ impl Kodi {
             Err(err) => println!("the cache lock is poisoned: {:?}", err),
         };
 
-        //CRITICAL: make this use the sandbox
+        //TODO: make this use the sandbox
         let tempory_folder = match tempdir() {
             Ok(value) => value,
             Err(err) => return Err(KodiError::CantCreateTemporyDir(err)),
