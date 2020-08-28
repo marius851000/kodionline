@@ -5,10 +5,15 @@ for (player of music_players) {
 		e.target.preload = "auto";
 	}); //TODO: maybe use the whole tile choose to preload
 	player.addEventListener("playing", function(e) {
+		var next_id = Number(e.target.getAttribute("audiopreview_nb")) + 1;
 		for (player of music_players) {
-			if (player.getAttribute("audiopreview_nb") != e.target.getAttribute("audiopreview_nb")) {
+			var player_id = player.getAttribute("audiopreview_nb");
+			if (player_id != e.target.getAttribute("audiopreview_nb")) {
 				player.pause();
 				player.fastSeek(0);
+			};
+			if (player_id == next_id) {
+				player.preload = "auto";
 			};
 		};
 	});
