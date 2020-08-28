@@ -202,9 +202,13 @@ fn main() {
         },
     };
 
-    let mut kodi = Kodi::new(&setting.kodi_path).unwrap();
+    let mut kodi = if Environment::active().unwrap().is_dev() {
+        Kodi::new(&setting.kodi_path, 2, 500).unwrap()
+    } else {
+        Kodi::new(&setting.kodi_path, 3600, 500).unwrap()
+    };
+
     kodi.set_python_command(setting.python_command.clone());
-    kodi.set_use_cache(!Environment::active().unwrap().is_dev());
 
     rocket::ignite()
         .manage(kodi)

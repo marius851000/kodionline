@@ -61,31 +61,26 @@ pub struct Kodi {
     kodi_config_path: String,
     cache: Mutex<TimedCache<String, Page>>,
     python_command: String,
-    use_cache: bool,
 }
 
 impl Kodi {
-    /// create a new kodi addon based on a path
+    /// create a new kodi addon based on a path, with a cache configured for ``cache_time`` seconds with ``cache_elem`` cached element
     /// # Examples
     ///
     /// ```
     /// use kodionline::Kodi;
-    /// let kodi = Kodi::new("~/.kodi").unwrap();
+    /// let kodi = Kodi::new("~/.kodi", 3600, 500).unwrap();
     /// ```
-    pub fn new(path: &str) -> Result<Self, KodiError> {
+    pub fn new(path: &str, cache_time: u64, cache_size: usize) -> Result<Self, KodiError> {
         Ok(Self {
             kodi_config_path: shellexpand::tilde(path).into(),
-            cache: Mutex::new(TimedCache::with_lifespan_and_capacity(3600, 500)),
+            cache: Mutex::new(TimedCache::with_lifespan_and_capacity(cache_time, cache_size)),
             python_command: "python2".into(),
-            use_cache: true,
         })
     }
 
     pub fn set_python_command(&mut self, command: String) {
         self.python_command = command;
-    }
-    pub fn set_use_cache(&mut self, use_cache: bool) {
-        self.use_cache = use_cache;
     }
 
     fn get_commands(&self, plugin_path: &str, tempory_file: &str) -> Vec<String> {
@@ -104,20 +99,18 @@ impl Kodi {
     ///
     /// It will use the kodi-dl library to do this, and will sandbox the call (not actually implemented)
     ///
-    /// this function also use a timed cache if [`set_use_cache`] have been called with ``true``.
+    /// this function also use a timed cache, that will remove element older than the time specified at initialisation.
     ///
     /// # Errors
     /// this function return a [`KodiError`] when an error occur. there may be multiple kind of error, the most important one [`KodiError::CallError`] for when the addon crashed.
     pub fn invoke_sandbox(&self, plugin_path: &str) -> Result<Page, KodiError> {
-        if self.use_cache {
-            match self.cache.lock() {
-                Ok(mut cache) => {
-                    if let Some(cached_value) = cache.cache_get(&plugin_path.to_string()) {
-                        return Ok(cached_value.clone());
-                    }
+        match self.cache.lock() {
+            Ok(mut cache) => {
+                if let Some(cached_value) = cache.cache_get(&plugin_path.to_string()) {
+                    return Ok(cached_value.clone());
                 }
-                Err(err) => println!("the cache lock is poisoned: {:?}", err),
-            };
+            }
+            Err(err) => println!("the cache lock is poisoned: {:?}", err),
         };
 
         //CRITICAL: make this use the sandbox
@@ -158,13 +151,11 @@ impl Kodi {
             Err(err) => return Err(KodiError::CantParseResultFile(err)),
         };
 
-        if self.use_cache {
-            match self.cache.lock() {
-                Ok(mut cache) => {
-                    cache.cache_set(plugin_path.to_string(), result.clone());
-                }
-                Err(err) => println!("the cache lock is poisoned: {:?}", err),
-            };
+        match self.cache.lock() {
+            Ok(mut cache) => {
+                cache.cache_set(plugin_path.to_string(), result.clone());
+            }
+            Err(err) => println!("the cache lock is poisoned: {:?}", err),
         };
 
         Ok(result)
