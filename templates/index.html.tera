@@ -4,13 +4,13 @@
 
 {%block content%}
 <p class="website_description">
-	kodi online is a service that allow to browser the content of kodi addon in a web browser.
-	metadata will be fetched by the server, but the media will be viewed/download by your computer from the original site.
+	kodi online is a service that allow to browse the content of kodi addon in a web browser.
+	Metadata will be fetched by the server, but the media will be viewed/downloaded by your computer from the original site.
 	This may have some advantage:
 	<ul>
 		<li>it permit a greater anonymity: individual user tracking are almost always done when viewing the webpage that contain the video, not the video itself</li>
-		<li>it allow to have an unified interface (even if this one is bad)</li>
-		<li>it have the same advantage the browsing the plugin in kodi (allowing to have a different presentation to the source site).
+		<li>it allow to have an unified interface (even the original website interface are usually more adapted)</li>
+		<li>it have the same advantage the browsing the plugin in kodi (allowing to have a different presentation to the source site).</li>
 	</ul>
 	another working comparaison is that this site is similar to what invidious is for youtube and nitter for twitter.
 </p>
