@@ -52,8 +52,12 @@ pub fn format_to_string(source: &str) -> String {
                     rendered_string.extend("</span>".chars());
                 }
             } else {
-                rendered_string.extend("[unknwon keyword ".chars());
+                rendered_string.extend("[".chars());
                 rendered_string.extend(first_keyword.chars());
+                if extension.len() > 0  {
+                    rendered_string.push(' ');
+                    rendered_string.extend(extension.chars());
+                };
                 rendered_string.push(']');
             }
         } else {
