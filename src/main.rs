@@ -12,8 +12,6 @@ use rocket_contrib::templates::Template;
 
 use kodionline::{data, is_local_path, Kodi};
 
-use rayon::prelude::*;
-
 use rocket::request::Request;
 use rocket::response::{self, Redirect, Responder};
 
@@ -74,12 +72,24 @@ fn generate_error_page(error_message: String) -> Template {
 }
 
 #[derive(Serialize)]
-struct PageRenderPlugin {
-    page: data::Page,
+struct PagePluginMedia {
+    item: data::ListItem,
     data_url: String,
     plugin_type: String,
-    display_text: Option<String>,
-    rendered_title: Vec<String>,
+    title_rendered: Option<String>,
+}
+
+#[derive(Serialize)]
+struct SubContentDisplay {
+    data: data::SubContent,
+    label_html: String,
+}
+#[derive(Serialize)]
+struct PagePluginFolder {
+    all_sub_content: Vec<SubContentDisplay>,
+    data_url: String,
+    plugin_type: String,
+    title_rendered: Option<String>,
 }
 
 #[get("/plugin?<path>&<parent_path>")]
@@ -122,48 +132,52 @@ fn render_plugin(
 
     match kodi.invoke_sandbox(&path) {
         Ok(mut page) => {
-            match page.resolved_listitem.as_mut() {
+            match page.resolved_listitem {
                 // contain a media
                 Some(mut resolved_listitem) => {
                     if let Some(subcontent_from_parent) = subcontent_from_parent {
                         resolved_listitem.extend(subcontent_from_parent.listitem);
                     }
 
+                    //TODO: consider redirecting to /get_media only if necessary
                     let url = match &resolved_listitem.path {
                         Some(url) => url.clone(),
                         None => return generate_error_page("no media found for this page".into()),
                     };
 
-                    let display_text = Some(resolved_listitem.get_display_html());
+                    let title_rendered = Some(resolved_listitem.get_display_html());
                     resolved_listitem.path = Some(url);
-                    let data = PageRenderPlugin {
-                        page,
+                    let data = PagePluginMedia {
+                        item: resolved_listitem,
                         data_url: path,
                         plugin_type,
-                        display_text,
-                        rendered_title: Vec::new(),
+                        title_rendered,
                     };
                     Template::render("plugin_media", data)
                 }
                 // contain a folder
                 None => {
-                    let rendered_title = page
-                        .sub_content
-                        .par_iter()
-                        .map(|content| content.listitem.get_display_html())
-                        .collect();
-
-                    let display_text = match subcontent_from_parent {
+                    let title_rendered = match subcontent_from_parent {
                         Some(subcontent) => Some(subcontent.listitem.get_display_html()),
                         None => setting.get_label_for_path(&path),
                     };
 
-                    let data = PageRenderPlugin {
-                        page,
+                    let data = PagePluginFolder {
+                        all_sub_content: page
+                            .sub_content
+                            .drain(..)
+                            .map(|content| {
+                                let label_html = content.listitem.get_display_html();
+                                SubContentDisplay {
+                                    label_html,
+                                    data: content,
+                                }
+                            })
+                            .collect(),
+
                         data_url: path,
                         plugin_type,
-                        display_text,
-                        rendered_title,
+                        title_rendered,
                     };
                     Template::render("plugin_folder", data)
                 }

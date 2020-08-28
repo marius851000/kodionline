@@ -4,30 +4,29 @@
 
 {% set_global contain_playable_element = false %}
 <ul class="list_media">
-	{%for subfolder in page.sub_content %}
-		{%set subfolder_title = rendered_title[loop.index0] %}
+	{%for sub_content in all_sub_content %}
 	<li class="media_in_list">
-		<a href="/plugin?path={{subfolder.url | safe | urlencode}}&parent_path={{data_url | safe | urlencode}}">
-			<div class="subelem_title">{{subfolder_title | safe}}</div>
+		<a href="/plugin?path={{sub_content.data.url | safe | urlencode}}&parent_path={{data_url | safe | urlencode}}">
+			<div class="subelem_title">{{sub_content.label_html | safe}}</div>
 			{# select the art to display (if any) #}
-			{% if subfolder.listitem.arts["poster"] %}
+			{% if sub_content.data.listitem.arts["poster"] %}
 				{% set art_to_display = "poster" %}
-			{% elif subfolder.listitem.arts["thumb"] %}
+			{% elif sub_content.data.listitem.arts["thumb"] %}
 				{% set art_to_display = "thumb" %}
 			{% endif %}
 
 			{% if art_to_display %}
-				<img class="illustration" src="{{subfolder.listitem.arts[art_to_display]}}" />
+				<img class="illustration" src="{{sub_content.data.listitem.arts[art_to_display]}}" />
 			{%endif%}
 
-			{% if subfolder.listitem.info.plot %}
-				<p class="plot">{{subfolder.listitem.info.plot}}</p>
+			{% if sub_content.data.listitem.info.plot %}
+				<p class="plot">{{sub_content.data.listitem.info.plot}}</p>
 			{% endif %}
 
 			{% set_global is_playable = false %}
 			{% for possible_playable in ["IsPlayable", "isPlayable", "isplayable"] %}
-				{% if subfolder.listitem.properties[possible_playable] %}
-					{% if subfolder.listitem.properties[possible_playable] == "true" %}
+				{% if sub_content.data.listitem.properties[possible_playable] %}
+					{% if sub_content.data.listitem.properties[possible_playable] == "true" %}
 						{% set_global is_playable = true %}
 						{% set_global contain_playable_element = true %}
 					{%endif%}
@@ -39,7 +38,7 @@
 		{% if is_playable %}
 			{% if plugin_type == "audio" %}
 				<audio class="audiopreview" audiopreview_nb="{{loop.index0}}" preload="{% if loop.index0 == 0 %}auto{% else %}none{%endif%}" controls>
-					<source src = "/get_media?path={{subfolder.url | safe | urlencode}}" />
+					<source src = "/get_media?path={{sub_content.data.url | safe | urlencode}}" />
 				</audio>
 			{% endif %}
 		{% endif %}

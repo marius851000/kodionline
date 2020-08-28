@@ -1,8 +1,8 @@
 {%extends "base"%}
 
 {%block title%}
-	{% if display_text %}
-		{{display_text | safe}}
+	{% if title_rendered %}
+		{{title_rendered | safe}}
 	{% else %}
 		{{data_url}}
 	{%endif%}

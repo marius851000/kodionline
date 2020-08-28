@@ -7,7 +7,7 @@
 	{%if plugin_type == "video"%}
 		<video controls>
 			<source src="/get_media?path={{data_url | safe | urlencode}}" />
-			{#{% for subtitle in page.resolved_listitem.subtitles %}
+			{#{% for subtitle in item.subtitles %}
 				<track kind="captions" src="{{subtitle}}" srclang="en" label="English"/>
 			{% endfor %}#}
 		</video>
