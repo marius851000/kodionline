@@ -14,10 +14,10 @@ pub fn format_to_string(source: &str) -> String {
             let mut have_following_content = false;
             while let Some(char) = chars.next() {
                 if char == ']' {
-                    break
+                    break;
                 } else if char == ' ' {
                     have_following_content = true;
-                    break
+                    break;
                 } else {
                     first_keyword.push(char)
                 }
@@ -27,7 +27,7 @@ pub fn format_to_string(source: &str) -> String {
             if have_following_content {
                 while let Some(char) = chars.next() {
                     if char == ']' {
-                        break
+                        break;
                     } else {
                         extension.push(char);
                     }
@@ -47,7 +47,7 @@ pub fn format_to_string(source: &str) -> String {
                     rendered_string.extend(alpha.chars());
                     rendered_string.extend(";\">".chars());
                 }
-            } else if first_keyword == "/COLOR"{
+            } else if first_keyword == "/COLOR" {
                 if !IGNORE_COLOR {
                     rendered_string.extend("</span>".chars());
                 }
@@ -66,6 +66,9 @@ pub fn format_to_string(source: &str) -> String {
 #[test]
 fn test_format() {
     assert_eq!(&format_to_string("[B]Hello[/B]"), "<b>Hello</b>");
-    assert_eq!(&format_to_string("[COLOR ffFBBA16]Hello[/COLOR]"), "<span style=\"color: #FBBA16ff;\">Hello</span>");
+    assert_eq!(
+        &format_to_string("[COLOR ffFBBA16]Hello[/COLOR]"),
+        "<span style=\"color: #FBBA16ff;\">Hello</span>"
+    );
     //TODO: test for [COLOR]
 }

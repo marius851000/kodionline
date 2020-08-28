@@ -2,8 +2,8 @@
 #[macro_use]
 extern crate rocket;
 
-use rocket::State;
 use rocket::config::Environment;
+use rocket::State;
 
 use serde::{Deserialize, Serialize};
 
@@ -18,6 +18,8 @@ use std::io;
 use rocket::http::uri::Uri;
 
 use std::fs::File;
+
+use rayon::prelude::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Setting {
@@ -86,18 +88,22 @@ fn render_plugin(kodi: State<Kodi>, path: String, parent_path: Option<String>) -
             match page.resolved_listitem.as_mut() {
                 Some(mut resolved_listitem) => {
                     if let Some(parent_path) = parent_path {
-                        let parent_path = html_escape::decode_html_entities(&parent_path).to_string();
+                        let parent_path =
+                            html_escape::decode_html_entities(&parent_path).to_string();
                         match kodi.invoke_sandbox(&parent_path) {
                             Ok(value) => {
                                 for sub_content in value.sub_content {
                                     if sub_content.url == path {
                                         resolved_listitem.extend(sub_content.listitem.clone());
                                     };
-                                    break
+                                    break;
                                 }
-                            },
+                            }
                             Err(err) => {
-                                println!("got {:?} while trying to get the parent path {}", err, parent_path);
+                                println!(
+                                    "got {:?} while trying to get the parent path {}",
+                                    err, parent_path
+                                );
                             }
                         }
                     };
@@ -121,7 +127,11 @@ fn render_plugin(kodi: State<Kodi>, path: String, parent_path: Option<String>) -
                 }
                 None => {
                     // contain a folder
-                    let rendered_title = page.sub_content.iter().map(|content| content.listitem.get_display_html()).collect();
+                    let rendered_title = page
+                        .sub_content
+                        .iter()
+                        .map(|content| content.listitem.get_display_html())
+                        .collect();
                     let data = PageRenderPlugin {
                         page,
                         data_url: path,
@@ -158,7 +168,6 @@ struct PageMusicPlayer {
     musics: Vec<(String, String)>, //name, local (false) or online (true), plugin_path/url
 }
 
-
 #[get("/musicplayer?<path>")]
 fn render_musicplayer(kodi: State<Kodi>, path: String) -> Template {
     let possible_playable_value: Vec<String> = vec![
@@ -170,46 +179,51 @@ fn render_musicplayer(kodi: State<Kodi>, path: String) -> Template {
     let path = html_escape::decode_html_entities(&path).to_string();
     match kodi.invoke_sandbox(&path) {
         Ok(media_list) => {
-            let mut musics = Vec::new();
-            for sub_media in media_list.sub_content.iter() {
-                let mut isplayable = false;
-                for isplayable_key in &possible_playable_value {
-                    if let Some(value) = sub_media.listitem.properties.get(isplayable_key) {
-                        if value == "true" {
-                            isplayable = true;
-                            break;
-                        }
-                    };
-                };
-                if !isplayable {
-                    continue
-                }
-
-                fn failed_music() -> (String, String) {
-                    ("loading failed".into(), "".into())
-                };
-                musics.push(match &sub_media.listitem.path {
-                    Some(media_url) => {
-                        (sub_media.listitem.get_display_html(), media_url.to_string())
+            fn failed_music() -> (String, String) {
+                ("loading failed".into(), "".into())
+            };
+            let musics = media_list
+                .sub_content
+                .par_iter()
+                // check if the media is playable
+                .filter(|sub_media| {
+                    let mut isplayable = false;
+                    for isplayable_key in &possible_playable_value {
+                        if let Some(isplayable_value) =
+                            sub_media.listitem.properties.get(isplayable_key)
+                        {
+                            if isplayable_value == "true" {
+                                isplayable = true;
+                                break;
+                            }
+                        };
                     }
-                    None => match kodi.invoke_sandbox(&sub_media.url) {
+                    isplayable
+                })
+                .map(|sub_media| {
+                    //TODO: check if path is already known
+                    //TODO: check if media_url it point to an url or to a plugin://
+                    match kodi.invoke_sandbox(&sub_media.url) {
                         Ok(submedia_loaded) => match submedia_loaded.resolved_listitem {
-                            Some(resolved_listitem) => match &resolved_listitem.path {
-                                Some(path) => (
-                                    resolved_listitem.get_display_html(),
-                                    choose_local_or_external_media_url(
-                                        path.to_string(),
-                                        sub_media.url.as_str(),
+                            Some(mut resolved_listitem) => {
+                                resolved_listitem.extend(sub_media.listitem.clone());
+                                match &resolved_listitem.path {
+                                    Some(path) => (
+                                        resolved_listitem.get_display_html(),
+                                        choose_local_or_external_media_url(
+                                            path.to_string(),
+                                            sub_media.url.as_str(),
+                                        ),
                                     ),
-                                ),
-                                None => failed_music(),
-                            },
+                                    None => failed_music(),
+                                }
+                            }
                             None => failed_music(),
                         },
                         Err(_) => failed_music(),
-                    },
+                    }
                 })
-            }
+                .collect();
             let data = PageMusicPlayer { musics };
             Template::render("musicplayer", data)
         }

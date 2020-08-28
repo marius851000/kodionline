@@ -15,6 +15,7 @@ serde_json = "1.0"
 rocket = "0.4.5"
 html-escape = "0.2.6"
 cached = "0.18.0"
+rayon = "1.4.0"
 
 [dependencies.rocket_contrib]
 version = "0.4.5"

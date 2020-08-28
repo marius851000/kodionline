@@ -48,7 +48,6 @@
 	{%endfor%}
 </ul>
 
-{{playable_element_number}}
 {% if playable_element_number > 0 %}
 	{% if plugin_type == "audio" %}
 		<!-- js music player -->
