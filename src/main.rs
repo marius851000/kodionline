@@ -22,6 +22,8 @@ use rayon::prelude::*;
 use rocket::request::Request;
 use rocket::response::{self, Redirect, Responder};
 
+use kodionline::is_local_path;
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Setting {
     plugins_to_show: Vec<(String, String)>,
@@ -161,10 +163,6 @@ impl<'r> Responder<'r> for MediaResponse {
             Self::File(f) => f.respond_to(request),
         }
     }
-}
-
-fn is_local_path(path: &str) -> bool {
-    matches!(path.chars().next(), Some('/'))
 }
 
 //TODO: merge this with server_local_media
