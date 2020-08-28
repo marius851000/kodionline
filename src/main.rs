@@ -1,7 +1,9 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 #[macro_use]
 extern crate rocket;
+
 use rocket::State;
+use rocket::config::Environment;
 
 use serde::{Deserialize, Serialize};
 
@@ -210,6 +212,7 @@ fn main() {
 
     let mut kodi = Kodi::new(setting.kodi_path.clone()).unwrap();
     kodi.set_python_command(setting.python_command.clone());
+    kodi.set_use_cache(!Environment::active().unwrap().is_dev());
 
     rocket::ignite()
         .manage(kodi)

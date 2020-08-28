@@ -61,6 +61,7 @@ pub struct Kodi {
     kodi_config_path: String,
     cache: Mutex<TimedCache<String, Page>>,
     python_command: String,
+    use_cache: bool,
 }
 
 impl Kodi {
@@ -76,11 +77,15 @@ impl Kodi {
             kodi_config_path: shellexpand::tilde(&path).into(),
             cache: Mutex::new(TimedCache::with_lifespan_and_capacity(3600, 500)),
             python_command: "python2".into(),
+            use_cache: true,
         })
     }
 
     pub fn set_python_command(&mut self, command: String) {
         self.python_command = command;
+    }
+    pub fn set_use_cache(&mut self, use_cache: bool) {
+        self.use_cache = use_cache;
     }
 
     fn get_commands(&self, plugin_path: &str, tempory_file: &str) -> Vec<String> {
@@ -94,13 +99,15 @@ impl Kodi {
     }
 
     pub fn invoke_sandbox(&self, plugin_path: &str) -> Result<Page, KodiError> {
-        match self.cache.lock() {
-            Ok(mut cache) => {
-                if let Some(cached_value) = cache.cache_get(&plugin_path.to_string()) {
-                    return Ok(cached_value.clone());
+        if self.use_cache {
+            match self.cache.lock() {
+                Ok(mut cache) => {
+                    if let Some(cached_value) = cache.cache_get(&plugin_path.to_string()) {
+                        return Ok(cached_value.clone());
+                    }
                 }
-            }
-            Err(err) => println!("the cache lock is poisoned: {:?}", err),
+                Err(err) => println!("the cache lock is poisoned: {:?}", err),
+            };
         };
 
         //CRITICAL: make this use the sandbox
@@ -141,12 +148,15 @@ impl Kodi {
             Err(err) => return Err(KodiError::CantParseResultFile(err)),
         };
 
-        match self.cache.lock() {
-            Ok(mut cache) => {
-                cache.cache_set(plugin_path.to_string(), result.clone());
-            }
-            Err(err) => println!("the cache lock is poisoned: {:?}", err),
+        if self.use_cache {
+            match self.cache.lock() {
+                Ok(mut cache) => {
+                    cache.cache_set(plugin_path.to_string(), result.clone());
+                }
+                Err(err) => println!("the cache lock is poisoned: {:?}", err),
+            };
         };
+
         Ok(result)
     }
 }
