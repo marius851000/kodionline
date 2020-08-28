@@ -19,8 +19,8 @@ use std::fs::File;
 
 use rayon::prelude::*;
 
-use rocket::response::{self, Redirect, Responder};
 use rocket::request::Request;
+use rocket::response::{self, Redirect, Responder};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Setting {
@@ -95,9 +95,9 @@ fn render_plugin(kodi: State<Kodi>, path: String, parent_path: Option<String>) -
                             Ok(value) => {
                                 for sub_content in value.sub_content {
                                     if sub_content.url == path {
-                                        resolved_listitem.extend(sub_content.listitem.clone());
+                                        resolved_listitem.extend(sub_content.listitem);
+                                        break;
                                     };
-                                    break;
                                 }
                             }
                             Err(err) => {
@@ -149,30 +149,22 @@ fn render_plugin(kodi: State<Kodi>, path: String, parent_path: Option<String>) -
     }
 }
 
-#[derive(Serialize)]
-struct PageMusicPlayer {
-    musics: Vec<(String, String)>, //name, local (false) or online (true), plugin_path/url
-}
-
 enum MediaResponse {
     Redirect(Redirect),
-    File(File)
+    File(File),
 }
 
 impl<'r> Responder<'r> for MediaResponse {
     fn respond_to(self, request: &Request) -> response::Result<'r> {
         match self {
             Self::Redirect(r) => r.respond_to(request),
-            Self::File(f) => f.respond_to(request)
+            Self::File(f) => f.respond_to(request),
         }
     }
 }
 
 fn is_local_path(path: &str) -> bool {
-    match path.chars().next() {
-        Some('/') => true,
-        _ => false,
-    }
+    matches!(path.chars().next(), Some('/'))
 }
 
 //TODO: merge this with server_local_media
@@ -189,13 +181,13 @@ fn redirect_media(kodi: State<Kodi>, path: String) -> Option<MediaResponse> {
                             Ok(file) => file,
                             Err(err) => {
                                 println!("failed to open the local file due to {:?}", err);
-                                return None
+                                return None;
                             }
                         }))
                     } else {
                         Some(MediaResponse::Redirect(Redirect::to(path)))
                     }
-                },
+                }
                 None => None,
             },
             None => None,
@@ -203,7 +195,7 @@ fn redirect_media(kodi: State<Kodi>, path: String) -> Option<MediaResponse> {
         Err(err) => {
             println!("error {:?} while serving {}", err, path);
             None
-        },
+        }
     }
 }
 
@@ -224,14 +216,7 @@ fn main() {
         .manage(kodi)
         .manage(setting)
         .attach(Template::fairing())
-        .mount(
-            "/",
-            routes![
-                render_index,
-                render_plugin,
-                redirect_media
-            ],
-        )
+        .mount("/", routes![render_index, render_plugin, redirect_media])
         .mount("/static", StaticFiles::from("static"))
         .launch();
 }

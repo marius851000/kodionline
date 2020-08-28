@@ -25,7 +25,8 @@ pub fn format_to_string(source: &str) -> String {
 
             let mut extension = String::new();
             if have_following_content {
-                while let Some(char) = chars.next() {
+                //while let Some(char) = chars.next() {
+                for char in &mut chars {
                     if char == ']' {
                         break;
                     } else {
@@ -35,28 +36,28 @@ pub fn format_to_string(source: &str) -> String {
             }
 
             if first_keyword == "B" {
-                rendered_string.extend("<b>".chars())
+                rendered_string.push_str("<b>")
             } else if first_keyword == "/B" {
-                rendered_string.extend("</b>".chars())
+                rendered_string.push_str("</b>")
             } else if first_keyword == "COLOR" {
                 if !IGNORE_COLOR {
                     let alpha: String = extension.drain(..2).collect();
                     let rgb: String = extension.drain(..6).collect();
-                    rendered_string.extend("<span style=\"color: #".chars());
-                    rendered_string.extend(rgb.chars());
-                    rendered_string.extend(alpha.chars());
-                    rendered_string.extend(";\">".chars());
+                    rendered_string.push_str("<span style=\"color: #");
+                    rendered_string.push_str(&rgb);
+                    rendered_string.push_str(&alpha);
+                    rendered_string.push_str(";\">");
                 }
             } else if first_keyword == "/COLOR" {
                 if !IGNORE_COLOR {
-                    rendered_string.extend("</span>".chars());
+                    rendered_string.push_str("</span>");
                 }
             } else {
-                rendered_string.extend("[".chars());
-                rendered_string.extend(first_keyword.chars());
-                if extension.len() > 0  {
+                rendered_string.push('[');
+                rendered_string.push_str(&first_keyword);
+                if !extension.is_empty() {
                     rendered_string.push(' ');
-                    rendered_string.extend(extension.chars());
+                    rendered_string.push_str(&extension);
                 };
                 rendered_string.push(']');
             }

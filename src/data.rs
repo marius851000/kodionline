@@ -33,7 +33,7 @@ impl ListItem {
         if let Some(value) = &self.label {
             return format_to_string(value);
         };
-        return "unnamed".into();
+        "unnamed".to_string()
     }
 
     pub fn extend(&mut self, other: Self) {
