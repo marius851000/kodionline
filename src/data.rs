@@ -5,7 +5,7 @@ use crate::format_to_string;
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Page {
     pub sub_content: Vec<SubContent>,
-    pub sort_methods: Vec<u32>,
+    //pub sort_methods: Vec<u32>,
     pub resolved_listitem: Option<ListItem>,
 }
 
