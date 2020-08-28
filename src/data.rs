@@ -22,7 +22,7 @@ pub struct ListItem {
     pub label: Option<String>,
     pub path: Option<String>,
     pub arts: HashMap<String, Option<String>>,
-    //TODO: info, category, properties
+    pub category: Option<String>,
     pub info: Info,
     pub subtitles: Vec<String>,
     pub properties: HashMap<String, String>,
