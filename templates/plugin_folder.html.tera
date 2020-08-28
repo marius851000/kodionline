@@ -9,6 +9,7 @@
 
 {%block content%}
 
+{% set_global contain_playable_element = false %}
 <ul class="list_media">
 	{%for subfolder in page.sub_content %}
 		{%set subfolder_title = rendered_title[loop.index0] %}
@@ -35,6 +36,7 @@
 				{% if subfolder.listitem.properties[possible_playable] %}
 					{% if subfolder.listitem.properties[possible_playable] == "true" %}
 						{% set_global is_playable = true %}
+						{% set_global contain_playable_element = true %}
 					{%endif%}
 				{%endif%}
 			{%endfor%}
@@ -53,5 +55,8 @@
 	{%endfor%}
 </ul>
 
-<script type="text/javascript" src="/static/musicplayer.js"></script>
+{% if contain_playable_element %}
+	<button id="play_all">play all music syncronously (take care, may be loud and/or laggy)</a>
+	<script type="text/javascript" src="/static/musicplayer.js"></script>
+{% endif %}
 {%endblock content%}
