@@ -13,12 +13,17 @@ for (player of music_players) {
 		};
 	});
 	player.addEventListener("ended", function(e) {
-		var next_id = Number(e.target.getAttribute("audiopreview_nb")) + 1; //TODO: check if it's last
+		e.target.fastSeek(0);
+		var next_id = Number(e.target.getAttribute("audiopreview_nb")) + 1;
 		for (player of music_players) {
 			if (player.getAttribute("audiopreview_nb") == String(next_id)) {
 				player.play();
 			};
 		};
 	});
-	//TODO: seeked
+	player.addEventListener("seeked", function(e) {
+		if (e.target.currentTime > 0.1) { //check to prevent to catch fastSeek(0)
+			e.target.play();
+		};
+	})
 }

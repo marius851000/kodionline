@@ -30,23 +30,23 @@
 				<p class="plot">{{subfolder.listitem.info.plot}}</p>
 			{% endif %}
 
-			{% set_global added_this_one = false %}
+			{% set_global is_playable = false %}
 			{% for possible_playable in ["IsPlayable", "isPlayable", "isplayable"] %}
 				{% if subfolder.listitem.properties[possible_playable] %}
 					{% if subfolder.listitem.properties[possible_playable] == "true" %}
-						{%if added_this_one == false %}
-							{% set_global added_this_one = true %}
-						{%endif%}
+						{% set_global is_playable = true %}
 					{%endif%}
 				{%endif%}
 			{%endfor%}
 		</a>
 
 
-		{% if added_this_one %}
-			<audio class="audiopreview" audiopreview_nb="{{loop.index0}}" preload="{% if loop.index0 == 0 %}auto{% else %}none{%endif%}" controls>
-				<source src = "/get_media?path={{subfolder.url | urlencode}}" />
-			</audio>
+		{% if is_playable %}
+			{% if plugin_type == "audio" %}
+				<audio class="audiopreview" audiopreview_nb="{{loop.index0}}" preload="{% if loop.index0 == 0 %}auto{% else %}none{%endif%}" controls>
+					<source src = "/get_media?path={{subfolder.url | urlencode}}" />
+				</audio>
+			{% endif %}
 		{% endif %}
 
 	</li>
