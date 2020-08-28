@@ -4,7 +4,8 @@
 		["need for ponies audios", "plugin://plugin.audio.needforponies/?"],
 		["local mirror (video)", "plugin://plugin.video.local_mirror/?"],
 		["local mirror (audio)", "plugin://plugin.audio.local_mirror/?"],
-		["arte replay", "plugin://plugin.video.arteplussept/?"]
+		["arte replay", "plugin://plugin.video.arteplussept/?"],
+		["jambmc", "plugin://plugin.audio.jambmc/?"]
 	],
 	"kodi_path": "~/.kodi",
 	"python_command": "python2"
