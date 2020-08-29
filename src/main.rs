@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use rocket_contrib::serve::StaticFiles;
 use rocket_contrib::templates::Template;
 
-use kodionline::{data, encode_url, is_local_path, Kodi};
+use kodionline::{data, encode_url, is_local_path, Kodi, format_to_string};
 
 use rocket::request::Request;
 use rocket::response::{self, NamedFile, Redirect, Responder};
@@ -102,6 +102,7 @@ struct PagePluginMedia {
     plugin_type: String,
     title_rendered: Option<String>,
     media_url: String,
+    rendered_comment: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -175,6 +176,8 @@ fn render_plugin(
 
                     let title_rendered = Some(resolved_listitem.get_display_html());
 
+                    let rendered_comment = resolved_listitem.info.comment.clone().map(|comment| format_to_string(&comment));
+
                     let media_url = get_media_link_resolved_url(&media_url, &path);
 
                     let data = PagePluginMedia {
@@ -183,6 +186,7 @@ fn render_plugin(
                         plugin_type,
                         title_rendered,
                         media_url,
+                        rendered_comment
                     };
                     Template::render("plugin_media", data)
                 }

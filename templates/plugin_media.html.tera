@@ -25,7 +25,7 @@
 	{% if item.info.artist %}<p><b>artist</b> : {{item.info.artist}}</p>{% endif %}
 	{% if item.info.year %}<p><b>year</b> : {{item.info.year}}</p>{% endif %}
 	{% if item.info.genre %}<p><b>genre</b> : {{item.info.genre}}</p>{% endif %}
-	{#{% if rendered_comment %}<p><b>comment</b> : {{rendered_comment | safe}}</p>{% endif %}#} 
+	{% if rendered_comment %}<p>{{rendered_comment | safe}}</p>{% endif %}
 </div>
 <h2>download:</h2>
 <ul class="download">

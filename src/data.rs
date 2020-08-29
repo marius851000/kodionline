@@ -85,29 +85,29 @@ impl ListItem {
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct Info {
     #[serde(default)]
-    plot: Option<String>,
+    pub plot: Option<String>,
     #[serde(default)]
-    season: Option<u64>,
+    pub season: Option<u64>,
     #[serde(default)]
-    episode: Option<u64>,
+    pub episode: Option<u64>,
     #[serde(default)]
-    mediatype: Option<String>,
+    pub mediatype: Option<String>,
     #[serde(default)]
-    album: Option<String>,
+    pub album: Option<String>,
     #[serde(default)]
-    count: Option<u64>,
+    pub count: Option<u64>,
     #[serde(default)]
-    title: Option<String>,
+    pub title: Option<String>,
     #[serde(default)]
-    artist: Option<String>,
+    pub artist: Option<String>,
     #[serde(default)]
-    comment: Option<String>,
+    pub comment: Option<String>,
     #[serde(default)]
-    genre: Option<String>,
+    pub genre: Option<String>,
     #[serde(default)]
-    year: Option<i64>,
+    pub year: Option<i64>,
     #[serde(default)]
-    duration: Option<u64>,
+    pub duration: Option<u64>,
 }
 
 impl Info {

@@ -53,6 +53,8 @@ pub fn format_to_string(source: &str) -> String {
                 if !IGNORE_COLOR {
                     rendered_string.push_str("</span>");
                 }
+            } else if first_keyword == "CR" {
+                rendered_string.push_str("<br />")
             } else {
                 rendered_string.push('[');
                 rendered_string.push_str(&first_keyword);
