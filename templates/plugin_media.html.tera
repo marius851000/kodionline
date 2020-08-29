@@ -13,7 +13,7 @@
 		</video>
 	{%elif plugin_type == "audio"%}
 		<audio controls>
-			<source src="/get_media?path={{data_url | safe | urlencode}}" />
+			<source src="{{media_url | safe}}" />
 		</audio>
 	{%else%}
 		can't detect the type of media this content is. please download the file to play it
@@ -22,7 +22,7 @@
 <h2>download:</h2>
 <ul class="download">
 	<li>
-		<a href="/get_media?path={{data_url | safe | urlencode}}">{%-if plugin_type == "video"-%}
+		<a href="{{media_url | safe}}">{%-if plugin_type == "video"-%}
 			video
 		{%-elif plugin_type == "audio"-%}
 			audio

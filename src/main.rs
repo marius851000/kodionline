@@ -17,6 +17,8 @@ use rocket::response::{self, NamedFile, Redirect, Responder};
 
 use log::{error, info};
 
+use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
+
 use std::fs::File;
 use std::io;
 
@@ -73,12 +75,33 @@ fn generate_error_page(error_message: String) -> Template {
     Template::render("error", data)
 }
 
+fn get_media_link_subcontent(content: &data::SubContent) -> String {
+    if let Some(media_true_url) = &content.listitem.path {
+        get_media_link_resolved_url(&media_true_url, &content.url)
+    } else {
+        get_served_media_url(&content.url)
+    }
+}
+
+fn get_media_link_resolved_url(media_url: &str, media_path: &str) -> String {
+    if is_local_path(media_url) {
+        get_served_media_url(media_path)
+    } else {
+        media_url.to_string()
+    }
+}
+
+fn get_served_media_url(path: &str) -> String {
+    format!("/get_media?path={}", utf8_percent_encode(path, NON_ALPHANUMERIC))
+}
+
 #[derive(Serialize)]
 struct PagePluginMedia {
     item: data::ListItem,
     data_url: String,
     plugin_type: String,
     title_rendered: Option<String>,
+    media_url: String,
 }
 
 #[derive(Serialize)]
@@ -86,7 +109,9 @@ struct SubContentDisplay {
     data: data::SubContent,
     label_html: String,
     is_playable: bool,
+    media_url: String,
 }
+
 #[derive(Serialize)]
 struct PagePluginFolder {
     all_sub_content: Vec<SubContentDisplay>,
@@ -143,18 +168,21 @@ fn render_plugin(
                     }
 
                     //TODO: consider redirecting to /get_media only if necessary
-                    let url = match &resolved_listitem.path {
+                    let media_url = match &resolved_listitem.path {
                         Some(url) => url.clone(),
                         None => return generate_error_page("no media found for this page".into()),
                     };
 
                     let title_rendered = Some(resolved_listitem.get_display_html());
-                    resolved_listitem.path = Some(url);
+
+                    let media_url = get_media_link_resolved_url(&media_url, &path);
+
                     let data = PagePluginMedia {
                         item: resolved_listitem,
                         data_url: path,
                         plugin_type,
                         title_rendered,
+                        media_url,
                     };
                     Template::render("plugin_media", data)
                 }
@@ -172,9 +200,11 @@ fn render_plugin(
                             .map(|content| {
                                 let label_html = content.listitem.get_display_html();
                                 let is_playable = content.listitem.is_playable();
+                                let media_url = get_media_link_subcontent(&content);
                                 SubContentDisplay {
                                     label_html,
                                     is_playable,
+                                    media_url,
                                     data: content,
                                 }
                             })

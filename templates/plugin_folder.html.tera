@@ -29,7 +29,7 @@
 			{% set_global contain_playable_element = true %}
 			{% if plugin_type == "audio" %}
 				<audio class="audiopreview" audiopreview_nb="{{loop.index0}}" preload="{% if loop.index0 == 0 %}auto{% else %}none{%endif%}" controls>
-					<source src = "/get_media?path={{sub_content.data.url | safe | urlencode}}" />
+					<source src = "{{sub_content.media_url | safe}}" />
 				</audio>
 			{% endif %}
 		{% endif %}
