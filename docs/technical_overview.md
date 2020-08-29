@@ -21,8 +21,3 @@ When you want to display a page, it will:
 - generate the view for those data.
 
 It will, notably, tell if the url is a media or a folder. In case it is folder of an audio plugin, it will also add a music player for the audios element (usually music).
-
-## serving the media
-each time the client want to play a media, it will call an url from the site. The server will then redirect the client to the good url. This is put in place for two reason (rather than giving directly the url to the client when displaying the page):
-- It allow to server both local (file stored on the server of the owner of this website) and extern (file stored on server of others)  to be played simply.
-- It allow to send the page to the client even when the url of the media is unknown. This is particularly usefull for the media player, which may have tens of music, so tens of url, and tens of download to do before knowing the url of all the media, and being able to send the page to the client.
