@@ -87,13 +87,27 @@ pub struct Info {
     #[serde(default)]
     plot: Option<String>,
     #[serde(default)]
-    genre: Option<String>,
-    #[serde(default)]
     season: Option<u64>,
     #[serde(default)]
     episode: Option<u64>,
     #[serde(default)]
     mediatype: Option<String>,
+    #[serde(default)]
+    album: Option<String>,
+    #[serde(default)]
+    count: Option<u64>,
+    #[serde(default)]
+    title: Option<String>,
+    #[serde(default)]
+    artist: Option<String>,
+    #[serde(default)]
+    comment: Option<String>,
+    #[serde(default)]
+    genre: Option<String>,
+    #[serde(default)]
+    year: Option<i64>,
+    #[serde(default)]
+    duration: Option<u64>,
 }
 
 impl Info {
@@ -112,6 +126,27 @@ impl Info {
         };
         if self.mediatype.is_none() {
             self.mediatype = other.mediatype;
+        };
+        if self.album.is_none() {
+            self.album = other.album;
+        };
+        if self.count.is_none() {
+            self.count = other.count;
+        };
+        if self.title.is_none() {
+            self.title = other.title;
+        };
+        if self.artist.is_none() {
+            self.artist = other.artist;
+        };
+        if self.comment.is_none() {
+            self.comment = other.comment;
+        };
+        if self.year.is_none() {
+            self.year = other.year;
+        };
+        if self.duration.is_none() {
+            self.duration = other.duration;
         };
     }
 }

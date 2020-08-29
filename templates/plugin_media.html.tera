@@ -19,6 +19,14 @@
 		can't detect the type of media this content is. please download the file to play it
 	{%endif%}
 </div>
+<div class="metadata">
+	{% if item.info.album %}<p><b>album</b> : {{item.info.album}}</p>{% endif %}
+	{% if item.info.title %}<p><b>title</b> : {{item.info.title}}</p>{% endif %}
+	{% if item.info.artist %}<p><b>artist</b> : {{item.info.artist}}</p>{% endif %}
+	{% if item.info.year %}<p><b>year</b> : {{item.info.year}}</p>{% endif %}
+	{% if item.info.genre %}<p><b>genre</b> : {{item.info.genre}}</p>{% endif %}
+	{#{% if rendered_comment %}<p><b>comment</b> : {{rendered_comment | safe}}</p>{% endif %}#} 
+</div>
 <h2>download:</h2>
 <ul class="download">
 	<li>
