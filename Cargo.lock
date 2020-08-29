@@ -670,6 +670,7 @@ version = "0.1.0"
 dependencies = [
  "cached",
  "html-escape",
+ "log 0.4.11",
  "percent-encoding 2.1.0",
  "rocket",
  "rocket_contrib",

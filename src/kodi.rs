@@ -1,10 +1,9 @@
 use std::error::Error;
 use std::fmt;
 use std::path::PathBuf;
-
 use std::io;
-
 use std::fs::File;
+use std::sync::Mutex;
 
 use subprocess::{Exec, ExitStatus};
 
@@ -13,7 +12,7 @@ use tempfile::tempdir;
 use cached::Cached;
 use cached::TimedCache;
 
-use std::sync::Mutex;
+use log::error;
 
 use crate::data::Page;
 
@@ -112,7 +111,7 @@ impl Kodi {
                     return Ok(cached_value.clone());
                 }
             }
-            Err(err) => println!("the cache lock is poisoned: {:?}", err),
+            Err(err) => error!("the cache lock is poisoned: {:?}", err),
         };
 
         //TODO: make this use the sandbox
@@ -157,7 +156,7 @@ impl Kodi {
             Ok(mut cache) => {
                 cache.cache_set(plugin_path.to_string(), result.clone());
             }
-            Err(err) => println!("the cache lock is poisoned: {:?}", err),
+            Err(err) => error!("the cache lock is poisoned: {:?}", err),
         };
 
         Ok(result)

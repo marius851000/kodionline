@@ -16,6 +16,7 @@ rocket = "0.4.5"
 html-escape = "0.2.6"
 cached = "0.18.0"
 percent-encoding = "2.1.0"
+log = "0.4.11"
 #rayon = "1.4.0"
 
 [dependencies.rocket_contrib]

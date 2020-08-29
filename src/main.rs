@@ -15,6 +15,8 @@ use kodionline::{data, encode_url, is_local_path, Kodi};
 use rocket::request::Request;
 use rocket::response::{self, NamedFile, Redirect, Responder};
 
+use log::{error, debug};
+
 use std::fs::File;
 use std::io;
 
@@ -120,7 +122,7 @@ fn render_plugin(
                 result
             }
             Err(err) => {
-                println!(
+                error!(
                     "got {:?} while trying to get the parent path {}",
                     err, parent_path
                 );
@@ -187,7 +189,7 @@ fn render_plugin(
             }
         }
         Err(err) => {
-            println!("error while getting url \"{}\": {:?}", path, err);
+            error!("error while getting url \"{}\": {:?}", path, err);
             generate_error_page(format!("{}", err))
         }
     }
@@ -218,13 +220,13 @@ fn redirect_media(kodi: State<Kodi>, path: String) -> Option<MediaResponse> {
                         Some(MediaResponse::NamedFile(match NamedFile::open(media_url) {
                             Ok(file) => file,
                             Err(err) => {
-                                println!("failed to open the local file due to {:?}", err);
+                                error!("failed to open the local file due to {:?}", err);
                                 return None;
                             }
                         }))
                     } else {
                         let encoded = encode_url(&media_url);
-                        println!("redirecting the media {} to \"{}\"", path, encoded);
+                        debug!("redirecting the media {} to \"{}\"", path, encoded);
                         Some(MediaResponse::Redirect(Redirect::to(encoded)))
                     }
                 }
@@ -233,7 +235,7 @@ fn redirect_media(kodi: State<Kodi>, path: String) -> Option<MediaResponse> {
             None => None,
         },
         Err(err) => {
-            println!("error {:?} while serving {}", err, path);
+            error!("error {:?} while serving {}", err, path);
             None
         }
     }
