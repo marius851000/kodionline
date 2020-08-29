@@ -15,7 +15,7 @@ use kodionline::{data, encode_url, is_local_path, Kodi};
 use rocket::request::Request;
 use rocket::response::{self, NamedFile, Redirect, Responder};
 
-use log::{error, debug};
+use log::{error, info};
 
 use std::fs::File;
 use std::io;
@@ -226,7 +226,7 @@ fn redirect_media(kodi: State<Kodi>, path: String) -> Option<MediaResponse> {
                         }))
                     } else {
                         let encoded = encode_url(&media_url);
-                        debug!("redirecting the media {} to \"{}\"", path, encoded);
+                        info!("redirecting the media {} to \"{}\"", path, encoded);
                         Some(MediaResponse::Redirect(Redirect::to(encoded)))
                     }
                 }
