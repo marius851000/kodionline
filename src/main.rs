@@ -13,7 +13,7 @@ use rocket_contrib::templates::Template;
 use kodionline::{data, is_local_path, Kodi};
 
 use rocket::request::Request;
-use rocket::response::{self, Redirect, Responder};
+use rocket::response::{self, Redirect, Responder, NamedFile};
 
 use std::fs::File;
 use std::io;
@@ -192,14 +192,14 @@ fn render_plugin(
 
 enum MediaResponse {
     Redirect(Redirect),
-    File(File),
+    NamedFile(NamedFile),
 }
 
 impl<'r> Responder<'r> for MediaResponse {
     fn respond_to(self, request: &Request) -> response::Result<'r> {
         match self {
             Self::Redirect(r) => r.respond_to(request),
-            Self::File(f) => f.respond_to(request),
+            Self::NamedFile(f) => f.respond_to(request),
         }
     }
 }
@@ -212,7 +212,7 @@ fn redirect_media(kodi: State<Kodi>, path: String) -> Option<MediaResponse> {
                 Some(path) => {
                     if is_local_path(&path) {
                         //TODO: check if the file is permitted to be read
-                        Some(MediaResponse::File(match File::open(path) {
+                        Some(MediaResponse::NamedFile(match NamedFile::open(path) {
                             Ok(file) => file,
                             Err(err) => {
                                 println!("failed to open the local file due to {:?}", err);
