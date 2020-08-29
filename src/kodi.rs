@@ -14,7 +14,7 @@ use cached::TimedCache;
 
 use log::error;
 
-use crate::data::Page;
+use crate::data::KodiResult;
 
 #[derive(Debug)]
 /// represent error that can happen while handling [`Kodi`]
@@ -58,7 +58,7 @@ impl Error for KodiError {
 /// where kodi store various data, including plugin.
 pub struct Kodi {
     kodi_config_path: String,
-    cache: Mutex<TimedCache<String, Page>>,
+    cache: Mutex<TimedCache<(String, Vec<String>), KodiResult>>,
     python_command: String,
 }
 
@@ -84,14 +84,19 @@ impl Kodi {
         self.python_command = command;
     }
 
-    fn get_commands(&self, plugin_path: &str, tempory_file: &str) -> Vec<String> {
-        vec![
+    fn get_commands(&self, plugin_path: &str, tempory_file: &str, expected_input: &Vec<String>) -> Vec<String> {
+        let mut result = vec![
             self.python_command.clone(),
             "kodi_interface.py".into(),
             self.kodi_config_path.clone(),
             plugin_path.into(),
             tempory_file.into(),
-        ]
+        ];
+        for input in expected_input {
+            result.push("-I".into());
+            result.push(input.clone());
+        }
+        result
     }
 
     /// Get the data for a kodi addon path.
@@ -102,12 +107,13 @@ impl Kodi {
     ///
     /// this function also use a timed cache, that will remove element older than the time specified at initialisation.
     ///
+    /// If the plugin want to get user input, you can pass a vec to expected_input that contain all the input (in the form of a string)
     /// # Errors
     /// this function return a [`KodiError`] when an error occur. there may be multiple kind of error, the most important one [`KodiError::CallError`] for when the addon crashed.
-    pub fn invoke_sandbox(&self, plugin_path: &str) -> Result<Page, KodiError> {
+    pub fn invoke_sandbox(&self, plugin_path: &str, expected_input: Vec<String>) -> Result<KodiResult, KodiError> {
         match self.cache.lock() {
             Ok(mut cache) => {
-                if let Some(cached_value) = cache.cache_get(&plugin_path.to_string()) {
+                if let Some(cached_value) = cache.cache_get(&(plugin_path.to_string(), expected_input.clone())) {
                     return Ok(cached_value.clone());
                 }
             }
@@ -123,7 +129,7 @@ impl Kodi {
         let mut data_file: PathBuf = tempory_folder.path().into(); // don't use into_path() to don't persist it
         data_file.push("tmp.json");
 
-        let command_argument_vec = self.get_commands(plugin_path, &data_file.to_string_lossy());
+        let command_argument_vec = self.get_commands(plugin_path, &data_file.to_string_lossy(), &expected_input);
         let mut command_argument = command_argument_vec.iter();
 
         let first_command = match command_argument.next() {
@@ -147,14 +153,14 @@ impl Kodi {
             Err(err) => return Err(KodiError::CantOpenResultFile(err)),
         };
 
-        let result: Page = match serde_json::from_reader(json_file) {
+        let result: KodiResult = match serde_json::from_reader(json_file) {
             Ok(value) => value,
             Err(err) => return Err(KodiError::CantParseResultFile(err)),
         };
 
         match self.cache.lock() {
             Ok(mut cache) => {
-                cache.cache_set(plugin_path.to_string(), result.clone());
+                cache.cache_set((plugin_path.to_string(), expected_input.clone()), result.clone());
             }
             Err(err) => error!("the cache lock is poisoned: {:?}", err),
         };

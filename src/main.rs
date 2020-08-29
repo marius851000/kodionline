@@ -10,14 +10,15 @@ use serde::{Deserialize, Serialize};
 use rocket_contrib::serve::StaticFiles;
 use rocket_contrib::templates::Template;
 
-use kodionline::{data, encode_url, is_local_path, Kodi, format_to_string};
+use kodionline::{data, encode_url, should_serve_file, Kodi, format_to_string};
 
 use rocket::request::Request;
 use rocket::response::{self, NamedFile, Redirect, Responder};
+use rocket::http::RawStr;
 
 use log::{error, info};
 
-use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
+use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode, percent_decode_str};
 
 use std::fs::File;
 use std::io;
@@ -50,6 +51,34 @@ impl Setting {
     }
 }
 
+fn decode_input(inputs_option: Option<&RawStr>) -> Vec<String> {
+    match inputs_option {
+        Some(inputs_raw) => {
+            if inputs_raw.len() == 0 {
+                Vec::new()
+            } else {
+                let mut result = Vec::new();
+                for input in inputs_raw.split(":") {
+                    result.push(percent_decode_str(input).decode_utf8_lossy().into()); //TODO: maybe catch the error someway, just decide what to do in this case
+                };
+                result
+            }
+        },
+        None => Vec::new(),
+    }
+}
+
+fn encode_input(inputs: Vec<String>) -> String {
+    let mut result = String::new();
+    for (input_nb, input) in inputs.iter().enumerate() {
+        if input_nb != 0 {
+            result.push(':');
+        };
+        result.extend(utf8_percent_encode(input, NON_ALPHANUMERIC).to_string().chars());
+    };
+    result
+}
+
 #[derive(Serialize)]
 struct PageIndex {
     plugins_to_show: Vec<(String, String)>,
@@ -77,22 +106,22 @@ fn generate_error_page(error_message: String) -> Template {
 
 fn get_media_link_subcontent(content: &data::SubContent) -> String {
     if let Some(media_true_url) = &content.listitem.path {
-        get_media_link_resolved_url(&media_true_url, &content.url)
+        get_media_link_resolved_url(&media_true_url, &content.url, Vec::new())
     } else {
-        get_served_media_url(&content.url)
+        get_served_media_url(&content.url, Vec::new())
     }
 }
 
-fn get_media_link_resolved_url(media_url: &str, media_path: &str) -> String {
-    if is_local_path(media_url) {
-        get_served_media_url(media_path)
+fn get_media_link_resolved_url(media_url: &str, media_path: &str, input: Vec<String>) -> String {
+    if should_serve_file(media_url) {
+        get_served_media_url(media_path, input)
     } else {
         media_url.to_string()
     }
 }
 
-fn get_served_media_url(path: &str) -> String {
-    format!("/get_media?path={}", utf8_percent_encode(path, NON_ALPHANUMERIC))
+fn get_served_media_url(path: &str, input: Vec<String>) -> String {
+    format!("/get_media?path={}&input={}", utf8_percent_encode(path, NON_ALPHANUMERIC), encode_input(input))
 }
 
 #[derive(Serialize)]
@@ -119,14 +148,31 @@ struct PagePluginFolder {
     data_url: String,
     plugin_type: String,
     title_rendered: Option<String>,
+    encoded_input: String,
 }
 
-#[get("/plugin?<path>&<parent_path>")]
+#[derive(Serialize)]
+struct PagePluginKeyboard {
+    plugin_type: String,
+    data_url: String,
+    title_rendered: Option<String>,
+    parent_path: String,
+    parent_input_encoded: String,
+    input_encoded: String,
+    keyboard_default: Option<String>,
+    keyboard_heading: Option<String>,
+    keyboard_hidden: bool,
+}
+
+#[get("/plugin?<path>&<parent_path>&<input>&<parent_input>&<additional_input>")]
 fn render_plugin(
     kodi: State<Kodi>,
     setting: State<Setting>,
     path: String,
     parent_path: Option<String>,
+    input: Option<&RawStr>,
+    parent_input: Option<&RawStr>,
+    additional_input: Option<String>,
 ) -> Template {
     let mut splited = path.split('.');
     splited.next();
@@ -135,9 +181,15 @@ fn render_plugin(
         None => return generate_error_page("impossible to get type of extension".to_string()),
     };
 
-    let subcontent_from_parent = if let Some(parent_path) = parent_path {
-        match kodi.invoke_sandbox(&parent_path) {
-            Ok(parent_page) => {
+    let mut input = decode_input(input);
+    match additional_input {
+        Some(value) => input.push(value),
+        None => (),
+    }
+
+    let subcontent_from_parent = if let Some(ref parent_path) = parent_path {
+        match kodi.invoke_sandbox(&parent_path, decode_input(parent_input)) {
+            Ok(data::KodiResult::Content(parent_page)) => {
                 let mut result = None;
                 for sub_content in parent_page.sub_content {
                     if sub_content.url == path {
@@ -146,7 +198,12 @@ fn render_plugin(
                     };
                 }
                 result
-            }
+            },
+            Ok(result) => {
+                error!("an input was asked while asking for the parent path {} (result: {:?})", parent_path, result);
+                //TODO: display input list when asked
+                None
+            },
             Err(err) => {
                 error!(
                     "got {:?} while trying to get the parent path {}",
@@ -159,8 +216,8 @@ fn render_plugin(
         None
     };
 
-    match kodi.invoke_sandbox(&path) {
-        Ok(mut page) => {
+    match kodi.invoke_sandbox(&path, input.clone()) {
+        Ok(data::KodiResult::Content(mut page)) => {
             match page.resolved_listitem {
                 // contain a media
                 Some(mut resolved_listitem) => {
@@ -178,7 +235,7 @@ fn render_plugin(
 
                     let rendered_comment = resolved_listitem.info.comment.clone().map(|comment| format_to_string(&comment));
 
-                    let media_url = get_media_link_resolved_url(&media_url, &path);
+                    let media_url = get_media_link_resolved_url(&media_url, &path, input);
 
                     let data = PagePluginMedia {
                         item: resolved_listitem,
@@ -217,11 +274,32 @@ fn render_plugin(
                         data_url: path,
                         plugin_type,
                         title_rendered,
+                        encoded_input: encode_input(input)
                     };
                     Template::render("plugin_folder", data)
                 }
             }
-        }
+        },
+        Ok(data::KodiResult::Keyboard(keyboard)) => {
+            let title_rendered = match subcontent_from_parent {
+                Some(subcontent) => Some(subcontent.listitem.get_display_html()),
+                None => setting.get_label_for_path(&path),
+            };
+
+            let data = PagePluginKeyboard {
+                plugin_type,
+                data_url: path,
+                title_rendered,
+                parent_path: parent_path.unwrap_or("".into()),
+                //TODO: replace encode_input(decode_input(...)) by clone/copy/to_string/...
+                parent_input_encoded: encode_input(decode_input(parent_input)),
+                input_encoded: encode_input(input),
+                keyboard_default: keyboard.default.clone(),
+                keyboard_hidden: keyboard.hidden,
+                keyboard_heading: keyboard.heading,
+            };
+            Template::render("plugin_keyboard", data)
+        },
         Err(err) => {
             error!("error while getting url \"{}\": {:?}", path, err);
             generate_error_page(format!("{}", err))
@@ -243,13 +321,13 @@ impl<'r> Responder<'r> for MediaResponse {
     }
 }
 
-#[get("/get_media?<path>")]
-fn redirect_media(kodi: State<Kodi>, path: String) -> Option<MediaResponse> {
-    match kodi.invoke_sandbox(&path) {
-        Ok(media_data) => match media_data.resolved_listitem {
+#[get("/get_media?<path>&<input>")]
+fn redirect_media(kodi: State<Kodi>, path: String, input: Option<&RawStr>) -> Option<MediaResponse> {
+    match kodi.invoke_sandbox(&path, decode_input(input)) {
+        Ok(data::KodiResult::Content(media_data)) => match media_data.resolved_listitem {
             Some(resolved_listitem) => match resolved_listitem.path {
                 Some(media_url) => {
-                    if is_local_path(&media_url) {
+                    if should_serve_file(&media_url) {
                         //TODO: check if the file is permitted to be read
                         Some(MediaResponse::NamedFile(match NamedFile::open(media_url) {
                             Ok(file) => file,
@@ -267,6 +345,10 @@ fn redirect_media(kodi: State<Kodi>, path: String) -> Option<MediaResponse> {
                 None => None,
             },
             None => None,
+        },
+        Ok(result) => {
+            error!("asked for input to access the media at {} (result: {:?})", path, result);
+            None
         },
         Err(err) => {
             error!("error {:?} while serving {}", err, path);

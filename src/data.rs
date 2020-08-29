@@ -2,6 +2,20 @@ use crate::format_to_string;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[derive(Deserialize, Clone, Debug)]
+#[serde(tag = "type")]
+pub enum KodiResult {
+    Content(Page),
+    Keyboard(Keyboard),
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct Keyboard {
+    pub default: Option<String>,
+    pub heading: Option<String>,
+    pub hidden: bool
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Page {
     pub sub_content: Vec<SubContent>,

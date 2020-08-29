@@ -7,13 +7,19 @@ arg_position = 0
 kodi_config_path = None
 requested_plugin_path = None
 output_file = None
+expected_input = []
 for arg in sys.argv[1:]:
     if next_argument_category == "path":
-        next_argument_category = None
         sys.path.append(arg)
+        next_argument_category = None
+    elif next_argument_category == "expected_input":
+        expected_input.append(arg)
+        next_argument_category = None
     elif next_argument_category == None:
         if arg == "-P":
             next_argument_category = "path"
+        elif arg == "-I":
+            next_argument_category = "expected_input"
         elif arg[0] == "-":
             raise BaseException("unknown argument: {}".format(arg))
         else:
@@ -33,13 +39,29 @@ for arg in sys.argv[1:]:
 import xbmcemu
 
 print("kodidl: requesting for {}".format(requested_plugin_path))
+if len(expected_input) > 0:
+    print("kodidl: with inputs {}".format(expected_input))
+
 kodi = xbmcemu.KodiInstance(kodi_config_path)
-result = kodi.run_url(requested_plugin_path)
-print("kodidl: got as result:")
-result.pretty_print("kodidl: ")
-print("kodidl: saving...")
-dumped = json.dumps(result.to_dict())
+kodi.planned_input = expected_input
+try:
+    result = kodi.run_url(requested_plugin_path)
+    print("kodidl: got as result:")
+    result.pretty_print("kodidl: ")
+    print("kodidl: saving...")
+    out_dic = result.to_dict()
+    out_dic["type"] = "Content"
+
+except xbmcemu.exception.KeyboardInputRequired as keyboard_exception:
+    keyboard = keyboard_exception.keyboard
+    out_dic = {
+        "default": keyboard.text,
+        "heading": keyboard.heading,
+        "hidden": keyboard.hidden,
+    }
+    out_dic["type"] = "Keyboard"
+
 f = open(output_file, "w")
-f.write(dumped)
+f.write(json.dumps(out_dic))
 f.close()
 print("kodidl: finished")
