@@ -670,7 +670,7 @@ version = "0.1.0"
 dependencies = [
  "cached",
  "html-escape",
- "pct-str",
+ "percent-encoding 2.1.0",
  "rocket",
  "rocket_contrib",
  "serde",
@@ -876,12 +876,6 @@ name = "opaque-debug"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2839e79665f131bdb5782e51f2c6c9599c133c6098982a54c794358bf432529c"
-
-[[package]]
-name = "pct-str"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d8ce52888b81a9c46cc1bd00663149eb7a2dc206a8568f561ccf079d5149ee9"
 
 [[package]]
 name = "pear"

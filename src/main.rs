@@ -223,10 +223,9 @@ fn redirect_media(kodi: State<Kodi>, path: String) -> Option<MediaResponse> {
                             }
                         }))
                     } else {
-                        println!("redirecting the media {} to \"{}\"", path, media_url);
-                        Some(MediaResponse::Redirect(Redirect::to(encode_url(
-                            &media_url,
-                        ))))
+                        let encoded = encode_url(&media_url);
+                        println!("redirecting the media {} to \"{}\"", path, encoded);
+                        Some(MediaResponse::Redirect(Redirect::to(encoded)))
                     }
                 }
                 None => None,
