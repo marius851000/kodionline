@@ -13,7 +13,7 @@ pub enum KodiResult {
 pub struct Keyboard {
     pub default: Option<String>,
     pub heading: Option<String>,
-    pub hidden: bool
+    pub hidden: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

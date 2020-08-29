@@ -7,13 +7,11 @@ pub mod data;
 mod format;
 pub use format::format_to_string;
 
-
 // local use
-use percent_encoding::{utf8_percent_encode, CONTROLS, AsciiSet};
+use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 
 pub fn should_serve_file(path: &str) -> bool {
-    matches!(path.chars().next(), Some('/'))
-    || path.starts_with("plugin://")
+    matches!(path.chars().next(), Some('/')) || path.starts_with("plugin://")
 }
 
 static URLENCODE: AsciiSet = CONTROLS.add(' ' as u8);

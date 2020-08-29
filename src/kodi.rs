@@ -1,8 +1,8 @@
 use std::error::Error;
 use std::fmt;
-use std::path::PathBuf;
-use std::io;
 use std::fs::File;
+use std::io;
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 use subprocess::{Exec, ExitStatus};
@@ -84,7 +84,12 @@ impl Kodi {
         self.python_command = command;
     }
 
-    fn get_commands(&self, plugin_path: &str, tempory_file: &str, expected_input: &Vec<String>) -> Vec<String> {
+    fn get_commands(
+        &self,
+        plugin_path: &str,
+        tempory_file: &str,
+        expected_input: &Vec<String>,
+    ) -> Vec<String> {
         let mut result = vec![
             self.python_command.clone(),
             "kodi_interface.py".into(),
@@ -110,10 +115,16 @@ impl Kodi {
     /// If the plugin want to get user input, you can pass a vec to expected_input that contain all the input (in the form of a string)
     /// # Errors
     /// this function return a [`KodiError`] when an error occur. there may be multiple kind of error, the most important one [`KodiError::CallError`] for when the addon crashed.
-    pub fn invoke_sandbox(&self, plugin_path: &str, expected_input: Vec<String>) -> Result<KodiResult, KodiError> {
+    pub fn invoke_sandbox(
+        &self,
+        plugin_path: &str,
+        expected_input: Vec<String>,
+    ) -> Result<KodiResult, KodiError> {
         match self.cache.lock() {
             Ok(mut cache) => {
-                if let Some(cached_value) = cache.cache_get(&(plugin_path.to_string(), expected_input.clone())) {
+                if let Some(cached_value) =
+                    cache.cache_get(&(plugin_path.to_string(), expected_input.clone()))
+                {
                     return Ok(cached_value.clone());
                 }
             }
@@ -129,7 +140,8 @@ impl Kodi {
         let mut data_file: PathBuf = tempory_folder.path().into(); // don't use into_path() to don't persist it
         data_file.push("tmp.json");
 
-        let command_argument_vec = self.get_commands(plugin_path, &data_file.to_string_lossy(), &expected_input);
+        let command_argument_vec =
+            self.get_commands(plugin_path, &data_file.to_string_lossy(), &expected_input);
         let mut command_argument = command_argument_vec.iter();
 
         let first_command = match command_argument.next() {
@@ -160,7 +172,10 @@ impl Kodi {
 
         match self.cache.lock() {
             Ok(mut cache) => {
-                cache.cache_set((plugin_path.to_string(), expected_input.clone()), result.clone());
+                cache.cache_set(
+                    (plugin_path.to_string(), expected_input.clone()),
+                    result.clone(),
+                );
             }
             Err(err) => error!("the cache lock is poisoned: {:?}", err),
         };
