@@ -22,20 +22,11 @@
 			{% if sub_content.data.listitem.info.plot %}
 				<p class="plot">{{sub_content.data.listitem.info.plot}}</p>
 			{% endif %}
-
-			{% set_global is_playable = false %}
-			{% for possible_playable in ["IsPlayable", "isPlayable", "isplayable"] %}
-				{% if sub_content.data.listitem.properties[possible_playable] %}
-					{% if sub_content.data.listitem.properties[possible_playable] == "true" %}
-						{% set_global is_playable = true %}
-						{% set_global contain_playable_element = true %}
-					{%endif%}
-				{%endif%}
-			{%endfor%}
 		</a>
 
 
-		{% if is_playable %}
+		{% if sub_content.is_playable %}
+			{% set_global contain_playable_element = true %}
 			{% if plugin_type == "audio" %}
 				<audio class="audiopreview" audiopreview_nb="{{loop.index0}}" preload="{% if loop.index0 == 0 %}auto{% else %}none{%endif%}" controls>
 					<source src = "/get_media?path={{sub_content.data.url | safe | urlencode}}" />

@@ -10,10 +10,10 @@ use serde::{Deserialize, Serialize};
 use rocket_contrib::serve::StaticFiles;
 use rocket_contrib::templates::Template;
 
-use kodionline::{data, is_local_path, Kodi, encode_url};
+use kodionline::{data, encode_url, is_local_path, Kodi};
 
 use rocket::request::Request;
-use rocket::response::{self, Redirect, Responder, NamedFile};
+use rocket::response::{self, NamedFile, Redirect, Responder};
 
 use std::fs::File;
 use std::io;
@@ -83,6 +83,7 @@ struct PagePluginMedia {
 struct SubContentDisplay {
     data: data::SubContent,
     label_html: String,
+    is_playable: bool,
 }
 #[derive(Serialize)]
 struct PagePluginFolder {
@@ -168,8 +169,10 @@ fn render_plugin(
                             .drain(..)
                             .map(|content| {
                                 let label_html = content.listitem.get_display_html();
+                                let is_playable = content.listitem.is_playable();
                                 SubContentDisplay {
                                     label_html,
+                                    is_playable,
                                     data: content,
                                 }
                             })
@@ -221,7 +224,9 @@ fn redirect_media(kodi: State<Kodi>, path: String) -> Option<MediaResponse> {
                         }))
                     } else {
                         println!("redirecting the media {} to \"{}\"", path, media_url);
-                        Some(MediaResponse::Redirect(Redirect::to(encode_url(&media_url))))
+                        Some(MediaResponse::Redirect(Redirect::to(encode_url(
+                            &media_url,
+                        ))))
                     }
                 }
                 None => None,

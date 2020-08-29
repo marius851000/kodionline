@@ -17,7 +17,7 @@ pub struct SubContent {
     pub listitem: ListItem,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct ListItem {
     pub label: Option<String>,
     pub path: Option<String>,
@@ -37,6 +37,36 @@ impl ListItem {
         "unnamed".to_string()
     }
 
+    /// return ``true`` if this [`LisItem`] is marked as playable
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use kodionline::data::ListItem;
+    ///
+    /// let mut playable_listitem = ListItem::default();
+    /// playable_listitem.properties.insert("isPlayable".to_string(), "true".to_string());
+    /// assert!(playable_listitem.is_playable());
+    ///
+    /// let unplayable_listitem = ListItem::default();
+    /// assert!(!unplayable_listitem.is_playable());
+    /// ```
+    pub fn is_playable(&self) -> bool {
+        for is_playable_key in &["IsPlayable", "isPlayable", "Isplayable", "isplayable"] {
+            if let Some(is_playable_value) = self
+                .properties
+                .get(&is_playable_key.to_string())
+                .map(|x| x.as_str())
+            {
+                return match is_playable_value {
+                    "true" | "True" | "TRUE" => true,
+                    _ => false,
+                };
+            };
+        }
+        false
+    }
+
     pub fn extend(&mut self, other: Self) {
         if self.label.is_none() {
             self.label = other.label.clone();
@@ -52,7 +82,7 @@ impl ListItem {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct Info {
     #[serde(default)]
     plot: Option<String>,
