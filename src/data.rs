@@ -44,6 +44,18 @@ pub struct ListItem {
 
 impl ListItem {
     #[must_use]
+    pub fn get_thumb_category(&self) -> Option<&'static str> {
+        for key in &["thumb", "poster"] {
+            if let Some(art_url_option) = self.arts.get(*key) {
+                if let Some(_) = art_url_option {
+                    return Some(key);
+                }
+            }
+        }
+        None
+    }
+
+    #[must_use]
     pub fn get_display_html(&self) -> String {
         if let Some(value) = &self.label {
             return format_to_string(value);
@@ -65,6 +77,7 @@ impl ListItem {
     /// let unplayable_listitem = ListItem::default();
     /// assert!(!unplayable_listitem.is_playable());
     /// ```
+    #[must_use]
     pub fn is_playable(&self) -> bool {
         for is_playable_key in &["IsPlayable", "isPlayable", "Isplayable", "isplayable"] {
             if let Some(is_playable_value) = self

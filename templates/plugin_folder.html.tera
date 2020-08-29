@@ -8,15 +8,8 @@
 	<li class="media_in_list">
 		<a href="/plugin?path={{sub_content.data.url | safe | urlencode}}&parent_path={{data_url | safe | urlencode}}&parent_input={{encoded_input | safe}}">
 			<div class="subelem_title">{{sub_content.label_html | safe}}</div>
-			{# select the art to display (if any) #}
-			{% if sub_content.data.listitem.arts["poster"] %}
-				{% set art_to_display = "poster" %}
-			{% elif sub_content.data.listitem.arts["thumb"] %}
-				{% set art_to_display = "thumb" %}
-			{% endif %}
-
-			{% if art_to_display %}
-				<img class="illustration" src="{{sub_content.data.listitem.arts[art_to_display]}}" />
+			{% if sub_content.art_url %}
+				<img class="illustration" src="{{sub_content.art_url}}" />
 			{%endif%}
 
 			{% if sub_content.data.listitem.info.plot %}

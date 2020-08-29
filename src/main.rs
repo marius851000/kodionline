@@ -51,6 +51,23 @@ impl Setting {
     }
 }
 
+pub struct PathAccessData {
+    pub path: String,
+    pub input: Vec<String>,
+}
+
+impl PathAccessData {
+    pub fn try_create_from_url(path: Option<String>, input: Option<&RawStr>) -> Option<Self> {
+        match path {
+            Some(path_solved) => Some(PathAccessData {
+                path: path_solved,
+                input: decode_input(input),
+            }),
+            None => None,
+        }
+    }
+}
+
 fn decode_input(inputs_option: Option<&RawStr>) -> Vec<String> {
     match inputs_option {
         Some(inputs_raw) => {
@@ -69,7 +86,7 @@ fn decode_input(inputs_option: Option<&RawStr>) -> Vec<String> {
     }
 }
 
-fn encode_input(inputs: Vec<String>) -> String {
+fn encode_input(inputs: &Vec<String>) -> String {
     let mut result = String::new();
     for (input_nb, input) in inputs.iter().enumerate() {
         if input_nb != 0 {
@@ -109,28 +126,101 @@ fn generate_error_page(error_message: String) -> Template {
     Template::render("error", data)
 }
 
-fn get_media_link_subcontent(content: &data::SubContent) -> String {
+fn get_media_link_subcontent(content: &data::SubContent, parent: &PathAccessData) -> String {
+    let prefix = "/get_media?".to_string();
+
     if let Some(media_true_url) = &content.listitem.path {
-        get_media_link_resolved_url(&media_true_url, &content.url, Vec::new())
+        get_data_link_resolved_url(&media_true_url, &content.url, Vec::new(), prefix, parent)
     } else {
-        get_served_media_url(&content.url, Vec::new())
+        get_served_data_url(&content.url, Vec::new(), prefix, parent)
     }
 }
 
-fn get_media_link_resolved_url(media_url: &str, media_path: &str, input: Vec<String>) -> String {
+fn get_media_link_resolved_url(
+    media_url: &str,
+    media_path: &str,
+    input: Vec<String>,
+    parent: &PathAccessData,
+) -> String {
+    let prefix = "/get_media?".to_string();
+    get_data_link_resolved_url(media_url, media_path, input, prefix, parent)
+}
+
+fn get_art_link_subcontent(
+    content: &data::SubContent,
+    category: &str,
+    parent: &PathAccessData,
+) -> String {
+    let prefix = format!("/get_art?category={}&", category);
+
+    if let Some(Some(art_true_url)) = &content.listitem.arts.get(category) {
+        get_data_link_resolved_url(art_true_url, &content.url, Vec::new(), prefix, parent)
+    } else {
+        get_served_data_url(&content.url, Vec::new(), prefix, parent)
+    }
+}
+
+fn get_data_link_resolved_url(
+    media_url: &str,
+    media_path: &str,
+    input: Vec<String>,
+    prefix: String,
+    parent: &PathAccessData,
+) -> String {
     if should_serve_file(media_url) {
-        get_served_media_url(media_path, input)
+        get_served_data_url(media_path, input, prefix, parent)
     } else {
         media_url.to_string()
     }
 }
 
-fn get_served_media_url(path: &str, input: Vec<String>) -> String {
+fn get_served_data_url(
+    path: &str,
+    input: Vec<String>,
+    prefix: String,
+    parent: &PathAccessData,
+) -> String {
     format!(
-        "/get_media?path={}&input={}",
+        "{}path={}&input={}&parent_path={}&parent_input={}",
+        prefix,
         utf8_percent_encode(path, NON_ALPHANUMERIC),
-        encode_input(input)
+        encode_input(&input),
+        utf8_percent_encode(&parent.path, NON_ALPHANUMERIC),
+        encode_input(&parent.input)
     )
+}
+
+fn get_sub_content_from_parent(
+    kodi: &State<Kodi>,
+    parent_access: &PathAccessData,
+    child_path: &str,
+) -> Option<data::SubContent> {
+    match kodi.invoke_sandbox(&parent_access.path, parent_access.input.clone()) {
+        Ok(data::KodiResult::Content(parent_page)) => {
+            let mut result = None;
+            for sub_content in parent_page.sub_content {
+                if sub_content.url == child_path {
+                    result = Some(sub_content);
+                    break;
+                };
+            }
+            result
+        }
+        Ok(result) => {
+            error!(
+                "an input was asked while asking for the parent path {} (result: {:?})",
+                parent_access.path, result
+            );
+            None
+        }
+        Err(err) => {
+            error!(
+                "got {:?} while trying to get the parent path {}",
+                err, parent_access.path,
+            );
+            None
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -149,6 +239,7 @@ struct SubContentDisplay {
     label_html: String,
     is_playable: bool,
     media_url: String,
+    art_url: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -196,38 +287,17 @@ fn render_plugin(
         None => (),
     }
 
-    let subcontent_from_parent = if let Some(ref parent_path) = parent_path {
-        match kodi.invoke_sandbox(&parent_path, decode_input(parent_input)) {
-            Ok(data::KodiResult::Content(parent_page)) => {
-                let mut result = None;
-                for sub_content in parent_page.sub_content {
-                    if sub_content.url == path {
-                        result = Some(sub_content);
-                        break;
-                    };
-                }
-                result
-            }
-            Ok(result) => {
-                error!(
-                    "an input was asked while asking for the parent path {} (result: {:?})",
-                    parent_path, result
-                );
-                None
-            }
-            Err(err) => {
-                error!(
-                    "got {:?} while trying to get the parent path {}",
-                    err, parent_path
-                );
-                None
-            }
-        }
+    let current_access = PathAccessData { path, input };
+
+    let parent_access = PathAccessData::try_create_from_url(parent_path.clone(), parent_input);
+
+    let subcontent_from_parent = if let Some(ref parent_access_internal) = parent_access {
+        get_sub_content_from_parent(&kodi, &parent_access_internal, &current_access.path)
     } else {
         None
     };
 
-    match kodi.invoke_sandbox(&path, input.clone()) {
+    match kodi.invoke_sandbox(&current_access.path, current_access.input.clone()) {
         Ok(data::KodiResult::Content(mut page)) => {
             match page.resolved_listitem {
                 // contain a media
@@ -250,11 +320,16 @@ fn render_plugin(
                         .clone()
                         .map(|comment| format_to_string(&comment));
 
-                    let media_url = get_media_link_resolved_url(&media_url, &path, input);
+                    let media_url = get_media_link_resolved_url(
+                        &media_url,
+                        &current_access.path,
+                        current_access.input.clone(),
+                        &current_access,
+                    );
 
                     let data = PagePluginMedia {
                         item: resolved_listitem,
-                        data_url: path,
+                        data_url: current_access.path,
                         plugin_type,
                         title_rendered,
                         media_url,
@@ -266,7 +341,7 @@ fn render_plugin(
                 None => {
                     let title_rendered = match subcontent_from_parent {
                         Some(subcontent) => Some(subcontent.listitem.get_display_html()),
-                        None => setting.get_label_for_path(&path),
+                        None => setting.get_label_for_path(&current_access.path),
                     };
 
                     let data = PagePluginFolder {
@@ -276,20 +351,30 @@ fn render_plugin(
                             .map(|content| {
                                 let label_html = content.listitem.get_display_html();
                                 let is_playable = content.listitem.is_playable();
-                                let media_url = get_media_link_subcontent(&content);
+                                let media_url =
+                                    get_media_link_subcontent(&content, &current_access);
+                                let art_url = match content.listitem.get_thumb_category() {
+                                    Some(art_category) => Some(get_art_link_subcontent(
+                                        &content,
+                                        art_category,
+                                        &current_access,
+                                    )),
+                                    None => None,
+                                };
                                 SubContentDisplay {
                                     label_html,
                                     is_playable,
                                     media_url,
                                     data: content,
+                                    art_url,
                                 }
                             })
                             .collect(),
 
-                        data_url: path,
+                        data_url: current_access.path,
                         plugin_type,
                         title_rendered,
-                        encoded_input: encode_input(input),
+                        encoded_input: encode_input(&current_access.input),
                     };
                     Template::render("plugin_folder", data)
                 }
@@ -298,17 +383,17 @@ fn render_plugin(
         Ok(data::KodiResult::Keyboard(keyboard)) => {
             let title_rendered = match subcontent_from_parent {
                 Some(subcontent) => Some(subcontent.listitem.get_display_html()),
-                None => setting.get_label_for_path(&path),
+                None => setting.get_label_for_path(&current_access.path),
             };
 
             let data = PagePluginKeyboard {
                 plugin_type,
-                data_url: path,
+                data_url: current_access.path,
                 title_rendered,
                 parent_path: parent_path.unwrap_or("".into()),
-                //TODO: replace encode_input(decode_input(...)) by clone/copy/to_string/...
-                parent_input_encoded: encode_input(decode_input(parent_input)),
-                input_encoded: encode_input(input),
+                //TODO: replace encode_input(&decode_input(...)) by clone/copy/to_string/...
+                parent_input_encoded: encode_input(&decode_input(parent_input)),
+                input_encoded: encode_input(&current_access.input),
                 keyboard_default: keyboard.default.clone(),
                 keyboard_hidden: keyboard.hidden,
                 keyboard_heading: keyboard.heading,
@@ -316,7 +401,10 @@ fn render_plugin(
             Template::render("plugin_keyboard", data)
         }
         Err(err) => {
-            error!("error while getting url \"{}\": {:?}", path, err);
+            error!(
+                "error while getting url \"{}\": {:?}",
+                current_access.path, err
+            );
             generate_error_page(format!("{}", err))
         }
     }
@@ -340,36 +428,64 @@ fn redirect_data_generic<F>(
     kodi: State<Kodi>,
     path: String,
     input: Option<&RawStr>,
+    parent_path: Option<String>,
+    parent_input: Option<&RawStr>,
     category_label: &str,
     get_path_function: F,
 ) -> Option<ServeDataFromPlugin>
 where
-    F: Fn(&data::Page) -> Option<String>,
+    F: Fn(&data::ListItem) -> Option<String>,
 {
-    match kodi.invoke_sandbox(&path, decode_input(input)) {
-        Ok(data::KodiResult::Content(page)) => match get_path_function(&page) {
-            Some(media_url) => {
-                if should_serve_file(&media_url) {
-                    //TODO: check if the file is permitted to be read
-                    Some(ServeDataFromPlugin::NamedFile(
-                        match NamedFile::open(media_url) {
-                            Ok(file) => file,
-                            Err(err) => {
-                                error!("failed to open the local file due to {:?}", err);
-                                return None;
-                            }
-                        },
-                    ))
-                } else {
-                    let encoded = encode_url(&media_url);
-                    info!(
-                        "redirecting the {} at {} to \"{}\"",
-                        category_label, path, encoded
-                    );
-                    Some(ServeDataFromPlugin::Redirect(Redirect::to(encoded)))
-                }
+    let create_result_for_url = |data_url: String| -> Option<ServeDataFromPlugin> {
+        if should_serve_file(&data_url) {
+            //TODO: check if the file is permitted to be read
+            Some(ServeDataFromPlugin::NamedFile(
+                match NamedFile::open(data_url) {
+                    Ok(file) => file,
+                    Err(err) => {
+                        error!("failed to open the local file due to {:?}", err);
+                        return None;
+                    }
+                },
+            ))
+        } else {
+            let encoded = encode_url(&data_url);
+            info!(
+                "redirecting the {} at {} to \"{}\"",
+                category_label, path, encoded
+            );
+            Some(ServeDataFromPlugin::Redirect(Redirect::to(encoded)))
+        }
+    };
+
+    // try the parent first, as it probably already in the cache
+    if let Some(parent_access) = PathAccessData::try_create_from_url(parent_path, parent_input) {
+        if let Some(sub_content_from_parent) =
+            get_sub_content_from_parent(&kodi, &parent_access, &path)
+        {
+            if let Some(data_url) = get_path_function(&sub_content_from_parent.listitem) {
+                return create_result_for_url(data_url);
             }
-            None => None,
+        }
+    };
+
+    // otherwise, try to get it from the child
+    match kodi.invoke_sandbox(&path, decode_input(input)) {
+        Ok(data::KodiResult::Content(page)) => match page.resolved_listitem {
+            Some(resolved_listitem) => match get_path_function(&resolved_listitem) {
+                Some(media_url) => create_result_for_url(media_url),
+                None => {
+                    error!(
+                        "can't find the searched {} for {:?}",
+                        category_label, resolved_listitem
+                    );
+                    None
+                }
+            },
+            None => {
+                error!("can't find the resolved listitem for path {}", path);
+                None
+            }
         },
         Ok(result) => {
             error!(
@@ -388,22 +504,46 @@ where
     }
 }
 
-#[get("/get_media?<path>&<input>")]
+//TODO: parent_path & parent_url
+#[get("/get_media?<path>&<input>&<parent_path>&<parent_input>")]
 fn redirect_media(
     kodi: State<Kodi>,
     path: String,
     input: Option<&RawStr>,
+    parent_path: Option<String>,
+    parent_input: Option<&RawStr>,
 ) -> Option<ServeDataFromPlugin> {
-    redirect_data_generic(kodi, path, input, "media", |x| match &x.resolved_listitem {
-        Some(resolved_listitem) => resolved_listitem.path.clone(),
-        None => None,
+    redirect_data_generic(kodi, path, input, parent_path, parent_input, "media", |x| {
+        x.path.clone()
     })
 }
 
-/*#[get("/get_image?<path>&<input>")]
-fn redirect_image(kodi: State<Kodi>, path: String, input: Option<&RawStr>) -> Option<ServeDataFromPlugin> {
-
-}*/
+#[get("/get_art?<category>&<path>&<input>&<parent_path>&<parent_input>")]
+fn redirect_art(
+    kodi: State<Kodi>,
+    category: String,
+    path: String,
+    input: Option<&RawStr>,
+    parent_path: Option<String>,
+    parent_input: Option<&RawStr>,
+) -> Option<ServeDataFromPlugin> {
+    redirect_data_generic(
+        kodi,
+        path,
+        input,
+        parent_path,
+        parent_input,
+        "art",
+        |x| match &x.arts.get(&category) {
+            //TODO: this line is anormaly long. Find how to shorten it
+            Some(art_url_option) => match *art_url_option {
+                Some(value) => Some(value.clone()),
+                None => None,
+            },
+            None => None,
+        },
+    )
+}
 
 fn main() {
     let setting: Setting = match File::open("./setting.json") {
@@ -426,7 +566,10 @@ fn main() {
         .manage(kodi)
         .manage(setting)
         .attach(Template::fairing())
-        .mount("/", routes![render_index, render_plugin, redirect_media])
+        .mount(
+            "/",
+            routes![render_index, render_plugin, redirect_media, redirect_art],
+        )
         .mount("/static", StaticFiles::from("static"))
         .launch();
 }
