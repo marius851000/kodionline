@@ -105,7 +105,6 @@ where
     }
 }
 
-//TODO: parent_path & parent_url
 #[get("/get_media?<path>&<input>&<parent_path>&<parent_input>")]
 pub fn redirect_media(
     kodi: State<Kodi>,

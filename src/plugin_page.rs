@@ -95,7 +95,6 @@ pub fn render_plugin(
                         resolved_listitem.extend(subcontent_from_parent.listitem);
                     }
 
-                    //TODO: consider redirecting to /get_media only if necessary
                     let media_url = match &resolved_listitem.path {
                         Some(url) => url.clone(),
                         None => return generate_error_page("no media found for this page".into()),

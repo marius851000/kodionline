@@ -2,7 +2,6 @@
 
 {%block content%}
 
-<!--TODO: additionnal metadata-->
 <div class = "main_media">
 	{%if plugin_type == "video"%}
 		<video controls>
