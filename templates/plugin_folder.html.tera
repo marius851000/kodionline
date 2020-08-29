@@ -28,6 +28,7 @@
 		{% if sub_content.is_playable %}
 			{% set_global contain_playable_element = true %}
 			{% if plugin_type == "audio" %}
+				<br />
 				<audio class="audiopreview" audiopreview_nb="{{loop.index0}}" preload="{% if loop.index0 == 0 %}auto{% else %}none{%endif%}" controls>
 					<source src = "{{sub_content.media_url | safe}}" />
 				</audio>
