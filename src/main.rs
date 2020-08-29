@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use rocket_contrib::serve::StaticFiles;
 use rocket_contrib::templates::Template;
 
-use kodionline::{data, is_local_path, Kodi};
+use kodionline::{data, is_local_path, Kodi, encode_url};
 
 use rocket::request::Request;
 use rocket::response::{self, Redirect, Responder, NamedFile};
@@ -209,10 +209,10 @@ fn redirect_media(kodi: State<Kodi>, path: String) -> Option<MediaResponse> {
     match kodi.invoke_sandbox(&path) {
         Ok(media_data) => match media_data.resolved_listitem {
             Some(resolved_listitem) => match resolved_listitem.path {
-                Some(path) => {
-                    if is_local_path(&path) {
+                Some(media_url) => {
+                    if is_local_path(&media_url) {
                         //TODO: check if the file is permitted to be read
-                        Some(MediaResponse::NamedFile(match NamedFile::open(path) {
+                        Some(MediaResponse::NamedFile(match NamedFile::open(media_url) {
                             Ok(file) => file,
                             Err(err) => {
                                 println!("failed to open the local file due to {:?}", err);
@@ -220,7 +220,8 @@ fn redirect_media(kodi: State<Kodi>, path: String) -> Option<MediaResponse> {
                             }
                         }))
                     } else {
-                        Some(MediaResponse::Redirect(Redirect::to(path)))
+                        println!("redirecting the media {} to \"{}\"", path, media_url);
+                        Some(MediaResponse::Redirect(Redirect::to(encode_url(&media_url))))
                     }
                 }
                 None => None,
