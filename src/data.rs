@@ -86,7 +86,7 @@ impl ListItem {
                 .get(&is_playable_key.to_string())
                 .map(|x| x.as_str())
             {
-                return matches!(is_playable_value, "true" | "True" | "TRUE")
+                return matches!(is_playable_value, "true" | "True" | "TRUE");
             };
         }
         false

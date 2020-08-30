@@ -172,10 +172,7 @@ impl Kodi {
 
         match self.cache.lock() {
             Ok(mut cache) => {
-                cache.cache_set(
-                    (plugin_path.to_string(), expected_input),
-                    result.clone(),
-                );
+                cache.cache_set((plugin_path.to_string(), expected_input), result.clone());
             }
             Err(err) => error!("the cache lock is poisoned: {:?}", err),
         };

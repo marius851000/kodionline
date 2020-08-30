@@ -4,7 +4,7 @@ use std::collections::HashMap;
 pub struct UserConfig {
     pub language_order: Vec<String>,
     pub resolution_order: Vec<String>,
-    pub format_order: Vec<String>
+    pub format_order: Vec<String>,
 }
 
 impl UserConfig {

@@ -25,10 +25,7 @@ pub fn encode_input(inputs: &[String]) -> String {
         if input_nb != 0 {
             result.push(':');
         };
-        result.push_str(
-            &utf8_percent_encode(input, NON_ALPHANUMERIC)
-                .to_string(),
-        );
+        result.push_str(&utf8_percent_encode(input, NON_ALPHANUMERIC).to_string());
     }
     result
 }
