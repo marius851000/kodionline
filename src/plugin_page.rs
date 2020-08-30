@@ -4,7 +4,7 @@ use crate::{
     format_to_string, get_art_link_subcontent, get_media_link_resolved_url,
     get_media_link_subcontent, get_sub_content_from_parent,
     input::{decode_input, encode_input},
-    Kodi, PathAccessData, Setting,
+    Kodi, PathAccessData, Setting, UserConfig,
 };
 
 use log::error;
@@ -53,7 +53,8 @@ pub struct PagePluginKeyboard {
     keyboard_hidden: bool,
 }
 
-#[get("/plugin?<path>&<parent_path>&<input>&<parent_input>&<additional_input>")]
+#[allow(clippy::too_many_arguments)]
+#[get("/plugin?<path>&<parent_path>&<input>&<parent_input>&<additional_input>&<c>")]
 pub fn render_plugin(
     kodi: State<Kodi>,
     setting: State<Setting>,
@@ -62,7 +63,16 @@ pub fn render_plugin(
     input: Option<&RawStr>,
     parent_input: Option<&RawStr>,
     additional_input: Option<String>,
+    c: Option<String>, //TODO: user_config_encoded in cookie
 ) -> Template {
+    let user_config_encoded = c;
+
+    let user_config_in_url = UserConfig::new_from_optional_uri(user_config_encoded);
+    let final_config = setting
+        .default_user_config
+        .clone()
+        .add_config_prioritary(user_config_in_url);
+
     let mut splited = path.split('.');
     splited.next();
     let plugin_type = match splited.next() {
@@ -76,9 +86,14 @@ pub fn render_plugin(
         input.push(value)
     }
 
-    let current_access = PathAccessData { path, input };
+    let current_access = PathAccessData {
+        path,
+        input,
+        config: final_config.clone(),
+    };
 
-    let parent_access = PathAccessData::try_create_from_url(parent_path.clone(), parent_input);
+    let parent_access =
+        PathAccessData::try_create_from_url(parent_path.clone(), parent_input, final_config);
 
     let subcontent_from_parent = if let Some(ref parent_access_internal) = parent_access {
         get_sub_content_from_parent(&kodi, &parent_access_internal, &current_access.path)
@@ -86,7 +101,7 @@ pub fn render_plugin(
         None
     };
 
-    match kodi.invoke_sandbox(&current_access.path, current_access.input.clone()) {
+    match kodi.invoke_sandbox(&current_access) {
         Ok(KodiResult::Content(mut page)) => {
             match page.resolved_listitem {
                 // contain a media

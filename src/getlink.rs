@@ -57,11 +57,12 @@ pub fn get_served_data_url(
     parent: &PathAccessData,
 ) -> String {
     format!(
-        "{}path={}&input={}&parent_path={}&parent_input={}",
+        "{}path={}&input={}&parent_path={}&parent_input={}&c={}",
         prefix,
         utf8_percent_encode(path, NON_ALPHANUMERIC),
         encode_input(&input),
         utf8_percent_encode(&parent.path, NON_ALPHANUMERIC),
-        encode_input(&parent.input)
+        encode_input(&parent.input),
+        utf8_percent_encode(&parent.config.encode_to_uri(), NON_ALPHANUMERIC),
     )
 }

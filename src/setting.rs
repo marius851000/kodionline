@@ -1,3 +1,4 @@
+use crate::UserConfig;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -5,6 +6,7 @@ pub struct Setting {
     pub plugins_to_show: Vec<(String, String)>, //label, path
     pub kodi_path: String,
     pub python_command: String,
+    pub default_user_config: UserConfig,
 }
 
 impl Default for Setting {
@@ -13,6 +15,7 @@ impl Default for Setting {
             plugins_to_show: Vec::new(),
             kodi_path: "~/.kodi".into(),
             python_command: "python3".into(),
+            default_user_config: UserConfig::default(),
         }
     }
 }

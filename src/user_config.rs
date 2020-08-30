@@ -66,7 +66,7 @@ impl UserConfig {
     /// tranform this [`UserSetting`] in an [`HashMap`] that can be read by [`UserSetting::new_from_dict`]
     //TODO: test
     pub fn to_dict(&self) -> HashMap<String, String> {
-        fn add_double_dot(source: &Vec<String>) -> String {
+        fn add_double_dot(source: &[String]) -> String {
             let mut result = String::new();
             for (count, value) in source.iter().enumerate() {
                 if count > 0 {
@@ -112,8 +112,8 @@ impl UserConfig {
         match uri {
             Some(uri) => {
                 let mut result_hashmap = HashMap::new();
-                for section in uri.split("!") {
-                    let mut splited = section.split("=");
+                for section in uri.split('!') {
+                    let mut splited = section.split('=');
                     let key = percent_decode_str(&match splited.next() {
                         Some(v) => v,
                         None => continue,

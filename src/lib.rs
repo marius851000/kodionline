@@ -68,7 +68,7 @@ pub fn get_sub_content_from_parent(
     parent_access: &PathAccessData,
     child_path: &str,
 ) -> Option<SubContent> {
-    match kodi.invoke_sandbox(&parent_access.path, parent_access.input.clone()) {
+    match kodi.invoke_sandbox(&parent_access) {
         Ok(KodiResult::Content(parent_page)) => {
             let mut result = None;
             for sub_content in parent_page.sub_content {
