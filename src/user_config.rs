@@ -1,8 +1,8 @@
+use percent_encoding::{percent_decode_str, utf8_percent_encode, AsciiSet, CONTROLS};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use percent_encoding::{percent_decode_str, utf8_percent_encode, CONTROLS, AsciiSet};
+use std::collections::{HashMap, HashSet};
 
-#[derive(Default, Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Default, Debug, Clone, Deserialize, Serialize, PartialEq, Hash, Eq)]
 pub struct UserConfig {
     #[serde(default)]
     pub language_order: Vec<String>,
@@ -73,7 +73,7 @@ impl UserConfig {
                     result.push(':');
                 };
                 result.push_str(value);
-            };
+            }
             result
         };
 
@@ -81,7 +81,7 @@ impl UserConfig {
         result.insert("lang_ord".into(), add_double_dot(&self.language_order));
         result.insert("res_ord".into(), add_double_dot(&self.resolution_order));
         result.insert("form_ord".into(), add_double_dot(&self.format_order));
-        return result
+        result
     }
 
     /// Create a new [`UserConfig`] based on the given uri (if existing). Value use the default value if unspecified or the uri is [`None`]
@@ -117,15 +117,19 @@ impl UserConfig {
                     let key = percent_decode_str(&match splited.next() {
                         Some(v) => v,
                         None => continue,
-                    }).decode_utf8_lossy().to_string();
+                    })
+                    .decode_utf8_lossy()
+                    .to_string();
                     let value = percent_decode_str(&match splited.next() {
                         Some(v) => v,
                         None => continue,
-                    }).decode_utf8_lossy().to_string();
+                    })
+                    .decode_utf8_lossy()
+                    .to_string();
                     result_hashmap.insert(key, value);
                 }
                 Self::new_from_dict(result_hashmap)
-            },
+            }
             None => Self::default(),
         }
     }
@@ -159,21 +163,23 @@ impl UserConfig {
         let mut first_element = true;
         for (key, value) in to_encode.iter() {
             if value == "" {
-                continue
+                continue;
             };
-            if first_element {
+            if !first_element {
                 result.push('!');
             } else {
                 first_element = false;
-            };
+            }
             result.push_str(&utf8_percent_encode(key, URISPECIAL).to_string());
             result.push('=');
             result.push_str(&utf8_percent_encode(value, URISPECIAL).to_string());
-        };
+        }
         result
     }
 
     /// Add the config in ``other``, treating it as more important. Config from ``other`` will take priority over this one, thus config from this [`UserConfig`] will only be used if the new prioritary config doesn't provide handling for it.
+    ///
+    /// after merging, the element are deduplicated (implemented by a call to [`UserConfig::clean`])
     ///
     /// # Example
     ///
@@ -196,13 +202,35 @@ impl UserConfig {
     /// assert_eq!(result_config.language_order, vec!["en".to_string(), "fr".to_string()]);
     /// assert_eq!(&result_config.resolution_order[0], "720p");
     /// assert_eq!(&result_config.resolution_order[1], "1080p");
-    /// // it is undefined if double element are cleaned
     /// ```
     pub fn add_config_prioritary(self, prio: Self) -> Self {
         let mut result = prio;
         result.language_order.extend(self.language_order);
         result.resolution_order.extend(self.resolution_order);
         result.format_order.extend(self.format_order);
-        result
+        result.clean()
+    }
+
+    /// remove duplicated
+    pub fn clean(self) -> Self {
+        //TODO: search for a library to do this
+        fn remove_duplicate(mut list: Vec<String>) -> Vec<String> {
+            let mut known_value: HashSet<String> = HashSet::new();
+            let mut result = Vec::new();
+            for entry in list.drain(..) {
+                if known_value.contains(&entry) {
+                    continue;
+                };
+                result.push(entry.clone());
+                known_value.insert(entry);
+            }
+            result
+        };
+
+        Self {
+            language_order: remove_duplicate(self.language_order),
+            resolution_order: remove_duplicate(self.resolution_order),
+            format_order: remove_duplicate(self.format_order),
+        }
     }
 }
