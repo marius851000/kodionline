@@ -86,20 +86,30 @@ impl Kodi {
 
     fn get_commands(
         &self,
-        plugin_path: &str,
         tempory_file: &str,
-        expected_input: &[String],
+        access: &PathAccessData
     ) -> Vec<String> {
         let mut result = vec![
             self.python_command.clone(),
             "kodi_interface.py".into(),
             self.kodi_config_path.clone(),
-            plugin_path.into(),
+            access.path.clone(),
             tempory_file.into(),
         ];
-        for input in expected_input {
+        for input in &access.input {
             result.push("-I".into());
             result.push(input.clone());
+        }
+        for (add_list_key, values) in &[
+            ("language_order", &access.config.language_order),
+            ("resolution_order", &access.config.resolution_order),
+            ("format_order", &access.config.format_order),
+        ] {
+            for v in *values {
+                result.push("-AL".into());
+                result.push(add_list_key.to_string());
+                result.push(v.clone());
+            }
         }
         result
     }
@@ -133,7 +143,7 @@ impl Kodi {
         data_file.push("tmp.json");
 
         let command_argument_vec =
-            self.get_commands(&access.path, &data_file.to_string_lossy(), &access.input);
+            self.get_commands(&data_file.to_string_lossy(), &access);
         let mut command_argument = command_argument_vec.iter();
 
         let first_command = match command_argument.next() {
