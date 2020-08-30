@@ -29,6 +29,9 @@ pub mod error_page;
 
 pub mod redirect_page;
 
+mod user_config;
+pub use user_config::UserConfig;
+
 // local use
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 
