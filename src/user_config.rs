@@ -1,11 +1,18 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use percent_encoding::{percent_decode_str, utf8_percent_encode, CONTROLS, AsciiSet};
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct UserConfig {
+    #[serde(default)]
     pub language_order: Vec<String>,
+    #[serde(default)]
     pub resolution_order: Vec<String>,
+    #[serde(default)]
     pub format_order: Vec<String>,
 }
+
+const URISPECIAL: &AsciiSet = &CONTROLS.add(b'%').add(b'!').add(b'=');
 
 impl UserConfig {
     /// create a user config based on an [`HashMap`] of [`String`] with a [`String`] keyword
@@ -53,6 +60,116 @@ impl UserConfig {
             result.format_order = split_double_dot(format_order);
         };
 
+        result
+    }
+
+    /// tranform this [`UserSetting`] in an [`HashMap`] that can be read by [`UserSetting::new_from_dict`]
+    //TODO: test
+    pub fn to_dict(&self) -> HashMap<String, String> {
+        fn add_double_dot(source: &Vec<String>) -> String {
+            let mut result = String::new();
+            for (count, value) in source.iter().enumerate() {
+                if count > 0 {
+                    result.push(':');
+                };
+                result.push_str(value);
+            };
+            result
+        };
+
+        let mut result = HashMap::new();
+        result.insert("lang_ord".into(), add_double_dot(&self.language_order));
+        result.insert("res_ord".into(), add_double_dot(&self.resolution_order));
+        result.insert("form_ord".into(), add_double_dot(&self.format_order));
+        return result
+    }
+
+    /// Create a new [`UserConfig`] based on the given uri (if existing). Value use the default value if unspecified or the uri is [`None`]
+    ///
+    /// the URI is encoded under the form: ``key=value!key2=value2``. the key and value are percent decoded after parsing.
+    ///
+    /// The resulting hashmap is then parsed by [`UserConfig::new_from_dict`].
+    ///
+    /// if a key is set multiple time, the last one will be used.
+    ///
+    /// In case of invalid input, the result is undefined. The function will try to set valid input anyway.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use kodionline::UserConfig;
+    ///
+    /// assert_eq!(
+    ///     UserConfig {
+    ///         language_order: vec!["fr".into(), "!nv/li-=d".into()],
+    ///         resolution_order: vec!["la%li!".into()],
+    ///         .. UserConfig::default()
+    ///     },
+    ///     UserConfig::new_from_optional_uri(Some("lang_ord=fr:%21nv/li-%3dd!res_ord=la%25li%21".into()))
+    /// );
+    /// ```
+    pub fn new_from_optional_uri(uri: Option<String>) -> Self {
+        match uri {
+            Some(uri) => {
+                let mut result_hashmap = HashMap::new();
+                for section in uri.split("!") {
+                    let mut splited = section.split("=");
+                    let key = percent_decode_str(&match splited.next() {
+                        Some(v) => v,
+                        None => continue,
+                    }).decode_utf8_lossy().to_string();
+                    let value = percent_decode_str(&match splited.next() {
+                        Some(v) => v,
+                        None => continue,
+                    }).decode_utf8_lossy().to_string();
+                    result_hashmap.insert(key, value);
+                }
+                Self::new_from_dict(result_hashmap)
+            },
+            None => Self::default(),
+        }
+    }
+
+    /// Encode into a [`String`] this configuration
+    ///
+    /// the string is under the form ``key=value!key2=value2``. `!`, `=`, `%`, controls and utf-8 characters of key and value are url encoded.
+    ///
+    /// The string can be decoded with [`UserConfig::new_from_optional_uri`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use kodionline::UserConfig;
+    ///
+    /// let source = UserConfig {
+    ///     language_order: vec!["fr".into(), "!nv/li-=d".into()],
+    ///     resolution_order: vec!["la%li!".into()],
+    ///     .. UserConfig::default()
+    /// };
+    ///
+    /// assert_eq!(
+    ///     UserConfig::new_from_optional_uri(Some(source.encode_to_uri())),
+    ///     source
+    /// );
+    /// ```
+    pub fn encode_to_uri(&self) -> String {
+        let to_encode = self.to_dict();
+        let mut result = String::new();
+
+        let mut first_element = true;
+        for (key, value) in to_encode.iter() {
+            if value == "" {
+                continue
+            };
+            if first_element {
+                result.push('!');
+            } else {
+                first_element = false;
+            };
+            result.push_str(&utf8_percent_encode(key, URISPECIAL).to_string());
+            result.push('=');
+            result.push_str(&utf8_percent_encode(value, URISPECIAL).to_string());
+        };
         result
     }
 
