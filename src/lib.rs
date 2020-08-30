@@ -45,7 +45,7 @@ pub fn encode_url(url: &str) -> String {
 #[test]
 fn test_should_serve_file() {
     assert!(should_serve_file("/test.webm"));
-    assert!(!should_serve_file("plugin://stuff/url"));
+    assert!(should_serve_file("plugin://stuff/url"));
     assert!(!should_serve_file("http://example.org/media.webm"));
 }
 
