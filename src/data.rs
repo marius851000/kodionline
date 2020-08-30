@@ -48,7 +48,7 @@ impl ListItem {
     pub fn get_thumb_category(&self) -> Option<&'static str> {
         for key in &["thumb", "poster"] {
             if let Some(art_url_option) = self.arts.get(*key) {
-                if let Some(_) = art_url_option {
+                if art_url_option.is_some() {
                     return Some(key);
                 }
             }
@@ -86,10 +86,7 @@ impl ListItem {
                 .get(&is_playable_key.to_string())
                 .map(|x| x.as_str())
             {
-                return match is_playable_value {
-                    "true" | "True" | "TRUE" => true,
-                    _ => false,
-                };
+                return matches!(is_playable_value, "true" | "True" | "TRUE")
             };
         }
         false

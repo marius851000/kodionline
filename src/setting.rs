@@ -24,6 +24,6 @@ impl Setting {
                 return Some(label.clone());
             };
         }
-        return None;
+        None
     }
 }

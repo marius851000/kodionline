@@ -88,7 +88,7 @@ impl Kodi {
         &self,
         plugin_path: &str,
         tempory_file: &str,
-        expected_input: &Vec<String>,
+        expected_input: &[String],
     ) -> Vec<String> {
         let mut result = vec![
             self.python_command.clone(),
@@ -173,7 +173,7 @@ impl Kodi {
         match self.cache.lock() {
             Ok(mut cache) => {
                 cache.cache_set(
-                    (plugin_path.to_string(), expected_input.clone()),
+                    (plugin_path.to_string(), expected_input),
                     result.clone(),
                 );
             }

@@ -71,9 +71,9 @@ pub fn render_plugin(
     };
 
     let mut input = decode_input(input);
-    match additional_input {
-        Some(value) => input.push(value),
-        None => (),
+
+    if let Some(value) = additional_input {
+        input.push(value)
     }
 
     let current_access = PathAccessData { path, input };
@@ -174,11 +174,12 @@ pub fn render_plugin(
                 None => setting.get_label_for_path(&current_access.path),
             };
 
+            #[allow(clippy::or_fun_call)]
             let data = PagePluginKeyboard {
                 plugin_type,
                 data_url: current_access.path,
                 title_rendered,
-                parent_path: parent_path.unwrap_or("".into()),
+                parent_path: parent_path.unwrap_or("".to_string()),
                 //TODO: replace encode_input(&decode_input(...)) by clone/copy/to_string/...
                 parent_input_encoded: encode_input(&decode_input(parent_input)),
                 input_encoded: encode_input(&current_access.input),

@@ -39,7 +39,7 @@ pub fn should_serve_file(path: &str) -> bool {
     matches!(path.chars().next(), Some('/')) || path.starts_with("plugin://")
 }
 
-static URLENCODE: AsciiSet = CONTROLS.add(' ' as u8);
+static URLENCODE: AsciiSet = CONTROLS.add(b' ');
 
 pub fn encode_url(url: &str) -> String {
     utf8_percent_encode(url, &URLENCODE).to_string()

@@ -36,7 +36,7 @@ impl UserConfig {
     /// ```
     pub fn new_from_dict(mut dict: HashMap<String, String>) -> Self {
         fn split_double_dot(source_value: String) -> Vec<String> {
-            source_value.split(":").map(|v| v.to_string()).collect()
+            source_value.split(':').map(|v| v.to_string()).collect()
         }
 
         let mut result = Self::default();
