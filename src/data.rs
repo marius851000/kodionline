@@ -41,7 +41,8 @@ pub struct ListItem {
     pub info: Info,
     pub subtitles: Vec<Option<String>>,
     pub properties: HashMap<String, String>,
-    pub x_avalaible_languages: Vec<String>
+    pub x_avalaible_languages: Vec<String>,
+    pub stream_info: StreamInfo,
 }
 
 impl ListItem {
@@ -104,6 +105,9 @@ impl ListItem {
         self.info.extend(other.info);
         self.subtitles.extend(other.subtitles);
         self.subtitles.dedup();
+        self.x_avalaible_languages.extend(other.x_avalaible_languages);
+        self.x_avalaible_languages.dedup();
+        self.stream_info.extend(&other.stream_info);
         self.properties.extend(other.properties);
     }
 }
@@ -174,5 +178,31 @@ impl Info {
         if self.duration.is_none() {
             self.duration = other.duration;
         };
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
+pub struct StreamInfo {
+    #[serde(default)]
+    pub audio: StreamInfoAudio
+}
+
+impl StreamInfo {
+    pub fn extend(&mut self, other: &Self) {
+        self.audio.extend(&other.audio)
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
+pub struct StreamInfoAudio {
+    #[serde(default)]
+    pub language: Option<String>
+}
+
+impl StreamInfoAudio {
+    pub fn extend(&mut self, other: &Self) {
+        if let Some(language) = &other.language {
+            self.language = Some(language.clone())
+        }
     }
 }

@@ -44,6 +44,7 @@
 	{% if item.info.year %}<p><b>year</b> : {{item.info.year}}</p>{% endif %}
 	{% if item.info.plot %}<p><b>plot</b> : {{item.info.plot}}</p>{% endif %}
 	{% if item.info.genre %}<p><b>genre</b> : {{item.info.genre}}</p>{% endif %}
+	{% if item.stream_info.audio.language %}<p><b>audio language</b> : {{item.stream_info.audio.language}}</p>{% endif %}
 	{% if rendered_comment %}<p>{{rendered_comment | safe}}</p>{% endif %}
 </div>
 <h2>download:</h2>
