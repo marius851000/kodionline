@@ -1,4 +1,4 @@
-use crate::{input::{decode_input, encode_input}, UserConfig};
+use crate::{input::{decode_input, encode_input}, UserConfig, escape_tag};
 use serde::Serialize;
 use rocket::http::RawStr;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
@@ -34,6 +34,7 @@ impl PathAccessData {
 #[derive(Serialize)]
 pub struct PathAccessFormat {
     pub path_safe: String,
+    pub path_escaped: String,
     pub input_encoded: String,
     pub config: UserConfig,
 }
@@ -42,6 +43,7 @@ impl PathAccessFormat {
     pub fn new_from_pathaccessdata(path_access_data: PathAccessData) -> Self {
         PathAccessFormat {
             path_safe: utf8_percent_encode(&path_access_data.path, NON_ALPHANUMERIC).to_string(),
+            path_escaped: escape_tag(path_access_data.path),
             input_encoded: encode_input(&path_access_data.input),
             config: path_access_data.config,
         }
