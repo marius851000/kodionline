@@ -39,7 +39,7 @@ pub struct ListItem {
     pub arts: HashMap<String, Option<String>>,
     pub category: Option<String>,
     pub info: Info,
-    pub subtitles: Vec<String>,
+    pub subtitles: Vec<Option<String>>,
     pub properties: HashMap<String, String>,
 }
 
