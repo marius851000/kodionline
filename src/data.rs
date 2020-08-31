@@ -1,4 +1,4 @@
-use crate::{format_to_string, extend_option};
+use crate::{extend_option, format_to_string};
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -102,7 +102,8 @@ impl ListItem {
         self.subtitles.extend(other.subtitles);
         self.subtitles.dedup();
         self.properties.extend(other.properties);
-        self.x_avalaible_languages.extend(other.x_avalaible_languages);
+        self.x_avalaible_languages
+            .extend(other.x_avalaible_languages);
         self.x_avalaible_languages.dedup();
         self.stream_info.extend(other.stream_info);
     }
@@ -156,7 +157,7 @@ impl Info {
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct StreamInfo {
     #[serde(default)]
-    pub audio: StreamInfoAudio
+    pub audio: StreamInfoAudio,
 }
 
 impl StreamInfo {
@@ -168,7 +169,7 @@ impl StreamInfo {
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct StreamInfoAudio {
     #[serde(default)]
-    pub language: Option<String>
+    pub language: Option<String>,
 }
 
 impl StreamInfoAudio {

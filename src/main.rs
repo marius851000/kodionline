@@ -40,9 +40,9 @@ fn main() {
     };
 
     let mut kodi = if Environment::active().unwrap().is_dev() {
-        Kodi::new(&setting.kodi_path, 2, 500).unwrap()
+        Kodi::new(&setting.kodi_path, 2, 500)
     } else {
-        Kodi::new(&setting.kodi_path, 3600, 500).unwrap()
+        Kodi::new(&setting.kodi_path, 3600, 500)
     };
 
     kodi.set_python_command(setting.python_command.clone());

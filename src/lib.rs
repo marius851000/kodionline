@@ -32,6 +32,9 @@ pub mod redirect_page;
 mod user_config;
 pub use user_config::UserConfig;
 
+mod kodi_recurse;
+pub use kodi_recurse::kodi_recurse_par;
+
 // local use
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 
@@ -43,7 +46,12 @@ static URLENCODE: AsciiSet = CONTROLS.add(b' ');
 static HTMLENCODE: AsciiSet = CONTROLS.add(b'\'').add(b'"').add(b'&').add(b'<').add(b'>');
 
 pub fn escape_tag(value: String) -> String {
-    value.replace("\"", "&quot;").replace("\'", "&#39;").replace("<", "&lt;").replace(">", "&gt;").replace("&", "&amp;") //TODO: use the library
+    value
+        .replace("\"", "&quot;")
+        .replace("\'", "&#39;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("&", "&amp;") //TODO: use the library
 }
 
 pub fn encode_url(url: &str) -> String {
@@ -68,7 +76,6 @@ fn test_extend_option() {
     assert_eq!(changed, Some(2));
     extend_option(&mut changed, Some(5));
     assert_eq!(changed, Some(5));
-
 }
 
 #[test]

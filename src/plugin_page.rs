@@ -4,7 +4,7 @@ use crate::{
     format_to_string, get_art_link_subcontent, get_media_link_resolved_url,
     get_media_link_subcontent, get_sub_content_from_parent,
     input::decode_input,
-    Kodi, PathAccessData, Setting, UserConfig, PathAccessFormat
+    Kodi, PathAccessData, PathAccessFormat, Setting, UserConfig,
 };
 
 use log::error;

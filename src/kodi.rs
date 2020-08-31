@@ -60,6 +60,23 @@ pub struct Kodi {
     kodi_config_path: String,
     cache: Mutex<TimedCache<PathAccessData, KodiResult>>,
     python_command: String,
+    cache_time: u64,
+    cache_size: usize,
+}
+
+impl Clone for Kodi {
+    fn clone(&self) -> Self {
+        Self {
+            kodi_config_path: self.kodi_config_path.clone(),
+            cache: Mutex::new(TimedCache::with_lifespan_and_capacity(
+                self.cache_time,
+                self.cache_size,
+            )),
+            python_command: self.python_command.clone(),
+            cache_time: self.cache_time,
+            cache_size: self.cache_size,
+        }
+    }
 }
 
 impl Kodi {
@@ -70,25 +87,23 @@ impl Kodi {
     /// use kodionline::Kodi;
     /// let kodi = Kodi::new("~/.kodi", 3600, 500).unwrap();
     /// ```
-    pub fn new(path: &str, cache_time: u64, cache_size: usize) -> Result<Self, KodiError> {
-        Ok(Self {
+    pub fn new(path: &str, cache_time: u64, cache_size: usize) -> Self {
+        Self {
             kodi_config_path: shellexpand::tilde(path).into(),
             cache: Mutex::new(TimedCache::with_lifespan_and_capacity(
                 cache_time, cache_size,
             )),
             python_command: "python2".into(),
-        })
+            cache_time,
+            cache_size,
+        }
     }
 
     pub fn set_python_command(&mut self, command: String) {
         self.python_command = command;
     }
 
-    fn get_commands(
-        &self,
-        tempory_file: &str,
-        access: &PathAccessData
-    ) -> Vec<String> {
+    fn get_commands(&self, tempory_file: &str, access: &PathAccessData) -> Vec<String> {
         let mut result = vec![
             self.python_command.clone(),
             "kodi_interface.py".into(),
@@ -142,8 +157,7 @@ impl Kodi {
         let mut data_file: PathBuf = tempory_folder.path().into(); // don't use into_path() to don't persist it
         data_file.push("tmp.json");
 
-        let command_argument_vec =
-            self.get_commands(&data_file.to_string_lossy(), &access);
+        let command_argument_vec = self.get_commands(&data_file.to_string_lossy(), &access);
         let mut command_argument = command_argument_vec.iter();
 
         let first_command = match command_argument.next() {

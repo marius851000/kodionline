@@ -1,7 +1,11 @@
-use crate::{input::{decode_input, encode_input}, UserConfig, escape_tag};
-use serde::Serialize;
-use rocket::http::RawStr;
+use crate::{
+    escape_tag,
+    input::{decode_input, encode_input},
+    UserConfig,
+};
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+use rocket::http::RawStr;
+use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub struct PathAccessData {
