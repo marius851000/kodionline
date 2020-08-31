@@ -51,8 +51,6 @@ for arg in sys.argv[1:]:
     else:
         raise BaseException("next_argument_category is invalid: {}".format(next_argument_category))
 
-print(special_data)
-
 import xbmcemu
 
 print("kodidl: requesting for {}".format(requested_plugin_path))
