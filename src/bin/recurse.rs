@@ -29,6 +29,14 @@ fn main() -> ExitCode {
                 .takes_value(true)
                 .required(true),
         )
+        .arg(
+            Arg::with_name("jobs")
+                .short("j")
+                .long("jobs")
+                .help("the max number of running thread")
+                .default_value("1")
+                .takes_value(true)
+        )
         .subcommand(
             SubCommand::with_name("check")
                 .about("check the validity of the given kodi path and their child"),
@@ -62,6 +70,17 @@ fn main() -> ExitCode {
         setting.kodi_path = kodi_path.to_string();
     };
 
+    let jobs = match app_m.value_of("jobs") {
+        Some(jobs_str) => match jobs_str.parse() {
+            Ok(v) => v,
+            Err(_) => {
+                println!("impossible to parse the number {}", jobs_str);
+                return ExitCode::FAILURE
+            },
+        },
+        None => 1,
+    };
+
     let plugin_path = app_m.value_of("path").unwrap();
 
     let access = PathAccessData::new(plugin_path.to_string(), None, setting.default_user_config);
@@ -71,7 +90,7 @@ fn main() -> ExitCode {
     match app_m.subcommand() {
         ("check", Some(_check_m)) => {
             //TODO: more log
-            kodi_recurse_par::<(), _, _>(kodi, access, None, |_, _| None, |_, _| false, 5);
+            kodi_recurse_par::<(), _, _>(kodi, access, None, |_, _| None, |_, _| false, jobs);
         }
         _ => {
             println!("no sub-command given");
