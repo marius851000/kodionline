@@ -10,5 +10,5 @@
 
 
 {%block footer_addition%}
-	<p>kodi plugin url : {{access.path_safe | safe}}</p>
+	<p>kodi plugin url : {{access.path_escaped | safe}}</p>
 {%endblock%}
