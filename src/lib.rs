@@ -50,6 +50,27 @@ pub fn encode_url(url: &str) -> String {
     utf8_percent_encode(url, &URLENCODE).to_string()
 }
 
+pub fn extend_option<T: Clone>(source: &mut Option<T>, extender: Option<T>) {
+    if extender.is_some() {
+        *source = extender
+    }
+}
+
+#[test]
+fn test_extend_option() {
+    let mut changed = None;
+    extend_option(&mut changed, None);
+    assert_eq!(changed, None);
+    extend_option(&mut changed, Some(1));
+    assert_eq!(changed, Some(1));
+    changed = Some(2);
+    extend_option(&mut changed, None);
+    assert_eq!(changed, Some(2));
+    extend_option(&mut changed, Some(5));
+    assert_eq!(changed, Some(5));
+
+}
+
 #[test]
 fn test_should_serve_file() {
     assert!(should_serve_file("/test.webm"));

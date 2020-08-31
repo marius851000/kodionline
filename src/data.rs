@@ -1,4 +1,4 @@
-use crate::format_to_string;
+use crate::{format_to_string, extend_option};
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -95,20 +95,16 @@ impl ListItem {
     }
 
     pub fn extend(&mut self, other: Self) {
-        if self.label.is_none() {
-            self.label = other.label.clone();
-        };
-        if self.path.is_none() {
-            self.path = other.path.clone();
-        };
+        extend_option(&mut self.label, other.label);
+        extend_option(&mut self.path, other.path);
         self.arts.extend(other.arts);
         self.info.extend(other.info);
         self.subtitles.extend(other.subtitles);
         self.subtitles.dedup();
+        self.properties.extend(other.properties);
         self.x_avalaible_languages.extend(other.x_avalaible_languages);
         self.x_avalaible_languages.dedup();
-        self.stream_info.extend(&other.stream_info);
-        self.properties.extend(other.properties);
+        self.stream_info.extend(other.stream_info);
     }
 }
 
@@ -142,42 +138,18 @@ pub struct Info {
 
 impl Info {
     pub fn extend(&mut self, other: Self) {
-        if self.plot.is_none() {
-            self.plot = other.plot;
-        };
-        if self.genre.is_none() {
-            self.genre = other.genre;
-        };
-        if self.season.is_none() {
-            self.season = other.season;
-        };
-        if self.episode.is_none() {
-            self.episode = other.episode;
-        };
-        if self.mediatype.is_none() {
-            self.mediatype = other.mediatype;
-        };
-        if self.album.is_none() {
-            self.album = other.album;
-        };
-        if self.count.is_none() {
-            self.count = other.count;
-        };
-        if self.title.is_none() {
-            self.title = other.title;
-        };
-        if self.artist.is_none() {
-            self.artist = other.artist;
-        };
-        if self.comment.is_none() {
-            self.comment = other.comment;
-        };
-        if self.year.is_none() {
-            self.year = other.year;
-        };
-        if self.duration.is_none() {
-            self.duration = other.duration;
-        };
+        extend_option(&mut self.plot, other.plot);
+        extend_option(&mut self.genre, other.genre);
+        extend_option(&mut self.season, other.season);
+        extend_option(&mut self.episode, other.episode);
+        extend_option(&mut self.mediatype, other.mediatype);
+        extend_option(&mut self.album, other.album);
+        extend_option(&mut self.count, other.count);
+        extend_option(&mut self.title, other.title);
+        extend_option(&mut self.artist, other.artist);
+        extend_option(&mut self.comment, other.comment);
+        extend_option(&mut self.year, other.year);
+        extend_option(&mut self.duration, other.duration);
     }
 }
 
@@ -188,8 +160,8 @@ pub struct StreamInfo {
 }
 
 impl StreamInfo {
-    pub fn extend(&mut self, other: &Self) {
-        self.audio.extend(&other.audio)
+    pub fn extend(&mut self, other: Self) {
+        self.audio.extend(other.audio)
     }
 }
 
@@ -200,9 +172,7 @@ pub struct StreamInfoAudio {
 }
 
 impl StreamInfoAudio {
-    pub fn extend(&mut self, other: &Self) {
-        if let Some(language) = &other.language {
-            self.language = Some(language.clone())
-        }
+    pub fn extend(&mut self, other: Self) {
+        extend_option(&mut self.language, other.language)
     }
 }
