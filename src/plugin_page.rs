@@ -3,7 +3,7 @@ use crate::{
     error_page::generate_error_page,
     format_to_string, get_art_link_subcontent, get_media_link_resolved_url,
     get_media_link_subcontent, get_sub_content_from_parent,
-    input::{decode_input, encode_input},
+    input::decode_input,
     Kodi, PathAccessData, Setting, UserConfig, PathAccessFormat
 };
 
@@ -16,6 +16,7 @@ use serde::Serialize;
 pub struct PagePluginMedia {
     item: ListItem,
     access: PathAccessFormat,
+    parent: Option<PathAccessFormat>,
     plugin_type: String,
     title_rendered: Option<String>,
     media_url: String,
@@ -35,6 +36,7 @@ pub struct SubContentDisplay {
 pub struct PagePluginFolder {
     all_sub_content: Vec<SubContentDisplay>,
     access: PathAccessFormat,
+    parent: Option<PathAccessFormat>,
     plugin_type: String,
     title_rendered: Option<String>,
 }
@@ -43,9 +45,8 @@ pub struct PagePluginFolder {
 pub struct PagePluginKeyboard {
     plugin_type: String,
     access: PathAccessFormat,
+    parent: Option<PathAccessFormat>,
     title_rendered: Option<String>,
-    parent_path: String,
-    parent_input_encoded: String,
     keyboard_default: Option<String>,
     keyboard_heading: Option<String>,
     keyboard_hidden: bool,
@@ -131,6 +132,7 @@ pub fn render_plugin(
                     let data = PagePluginMedia {
                         item: resolved_listitem,
                         access: PathAccessFormat::new_from_pathaccessdata(current_access),
+                        parent: parent_access.map(|x| PathAccessFormat::new_from_pathaccessdata(x)),
                         plugin_type,
                         title_rendered,
                         media_url,
@@ -173,6 +175,7 @@ pub fn render_plugin(
                             .collect(),
 
                         access: PathAccessFormat::new_from_pathaccessdata(current_access),
+                        parent: parent_access.map(|x| PathAccessFormat::new_from_pathaccessdata(x)),
                         plugin_type,
                         title_rendered,
                     };
@@ -190,10 +193,8 @@ pub fn render_plugin(
             let data = PagePluginKeyboard {
                 plugin_type,
                 access: PathAccessFormat::new_from_pathaccessdata(current_access),
+                parent: parent_access.map(|x| PathAccessFormat::new_from_pathaccessdata(x)),
                 title_rendered,
-                parent_path: parent_path.unwrap_or("".to_string()),
-                //TODO: replace encode_input(&decode_input(...)) by clone/copy/to_string/...
-                parent_input_encoded: encode_input(&decode_input(parent_input)),
                 keyboard_default: keyboard.default.clone(),
                 keyboard_hidden: keyboard.hidden,
                 keyboard_heading: keyboard.heading,

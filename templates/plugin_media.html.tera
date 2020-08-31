@@ -2,7 +2,12 @@
 
 {%block content%}
 
-{% set_global self_link_no_param_safe = "/plugin?path=" ~ access.path_safe %} <!--TODO: check if it should be urlencoded -->
+{# check this work well with no parent used #}
+{% set_global self_link_no_param_safe = "/plugin?path=" ~ access.path_safe ~ "&input" ~ access.input_encoded %}
+
+{% if parent %}
+	{% set_global self_link_no_param_safe = self_link_no_param_safe ~ "&parent_path=" ~ parent.path_safe ~ "&parent_input=" ~ parent.input_encoded %}
+{% endif %}
 
 <div class = "main_media">
 	{%if plugin_type == "video"%}
