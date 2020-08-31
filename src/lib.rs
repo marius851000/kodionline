@@ -40,6 +40,7 @@ pub fn should_serve_file(path: &str) -> bool {
 }
 
 static URLENCODE: AsciiSet = CONTROLS.add(b' ');
+static HTMLENCODE: AsciiSet = CONTROLS.add(b'\'').add(b'"').add(b'&').add(b'<').add(b'>');
 
 pub fn escape_tag(value: String) -> String {
     value.replace("\"", "&quot;").replace("\'", "&#39;").replace("<", "&lt;").replace(">", "&gt;").replace("&", "&amp;") //TODO: use the library
