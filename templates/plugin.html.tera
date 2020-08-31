@@ -4,11 +4,11 @@
 	{% if title_rendered %}
 		{{title_rendered | safe}}
 	{% else %}
-		{{data_url}}
+		{{access.path_safe | safe}}
 	{%endif%}
 {%endblock title%}
 
 
 {%block footer_addition%}
-	<p>kodi plugin url : {{data_url}}</p>
+	<p>kodi plugin url : {{access.path_safe | safe}}</p>
 {%endblock%}

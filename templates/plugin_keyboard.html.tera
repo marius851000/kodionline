@@ -9,12 +9,13 @@
 		<label for="additional_input">{{keyboard_heading}}</label>
 	{%endif%}
 	<input type="{% if keyboard_hidden %}password{% else %}text{% endif %}" id="additional_input" name="additional_input" /><br />
-	<input type="hidden" name="path" value="{{data_url | safe}}" />
+	<input type="hidden" name="path" value="{{access.path_safe | safe}}" />
 	<input type="hidden" name="parent_path" value="{{parent_path | safe}}" />
-	<input type="hidden" name="input" value="{{input_encoded | safe}}" />
+	<input type="hidden" name="input" value="{{access.input_encoded | safe}}" />
 	<input type="hidden" name="input_parent" value="{{parent_input_encoded | safe}}" />
 	<input type="submit" value="Submit">
 </form>
+<!-- TODO: the brother does a supplementary encoding step ... -->
 {% if keyboard_default %}
 	<p><b>default input:</b>{{keyboard_default}}</p>
 {% endif %}

@@ -41,6 +41,7 @@ pub struct ListItem {
     pub info: Info,
     pub subtitles: Vec<Option<String>>,
     pub properties: HashMap<String, String>,
+    pub x_avalaible_languages: Vec<String>
 }
 
 impl ListItem {

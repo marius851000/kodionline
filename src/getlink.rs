@@ -1,4 +1,4 @@
-use crate::{data::SubContent, input::encode_input, should_serve_file, PathAccessData};
+use crate::{data::SubContent, input::encode_input, should_serve_file, PathAccessData, escape_tag};
 
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 
@@ -46,7 +46,7 @@ pub fn get_data_link_resolved_url(
     if should_serve_file(media_url) {
         get_served_data_url(media_path, input, prefix, parent)
     } else {
-        media_url.to_string()
+        escape_tag(media_url.to_string())
     }
 }
 

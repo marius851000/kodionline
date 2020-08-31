@@ -1,5 +1,7 @@
-use crate::{input::decode_input, UserConfig};
+use crate::{input::{decode_input, encode_input}, UserConfig};
+use serde::Serialize;
 use rocket::http::RawStr;
+use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub struct PathAccessData {
@@ -25,6 +27,23 @@ impl PathAccessData {
         match path {
             Some(path_solved) => Some(Self::new(path_solved, input, config)),
             None => None,
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct PathAccessFormat {
+    pub path_safe: String,
+    pub input_encoded: String,
+    pub config: UserConfig,
+}
+
+impl PathAccessFormat {
+    pub fn new_from_pathaccessdata(path_access_data: PathAccessData) -> Self {
+        PathAccessFormat {
+            path_safe: utf8_percent_encode(&path_access_data.path, NON_ALPHANUMERIC).to_string(),
+            input_encoded: encode_input(&path_access_data.input),
+            config: path_access_data.config,
         }
     }
 }

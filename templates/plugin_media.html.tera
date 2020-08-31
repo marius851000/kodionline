@@ -2,10 +2,12 @@
 
 {%block content%}
 
+{% set_global self_link_no_param_safe = "/plugin?path=" ~ access.path_safe %} <!--TODO: check if it should be urlencoded -->
+
 <div class = "main_media">
 	{%if plugin_type == "video"%}
 		<video controls>
-			<source src="/get_media?path={{data_url | safe | urlencode}}" />
+			<source src="{{media_url | safe}}" />
 			{#{% for subtitle in item.subtitles %}
 				<track kind="captions" src="{{subtitle}}" srclang="en" label="English"/>
 			{% endfor %}#}
@@ -18,6 +20,18 @@
 		can't detect the type of media this content is. please download the file to play it
 	{%endif%}
 </div>
+
+<div class="alt_media">
+{% if item.x_avalaible_languages | length > 0 %}
+	<p><strong>avalaible languages</strong>:</p>
+	<ul class="language altlink">
+	{% for language in item.x_avalaible_languages %}
+		<li><a href="{{self_link_no_param_safe}}">{{language}}</a></li>
+	{% endfor %}
+	</ul>
+{% endif %}
+</div>
+
 <div class="metadata">
 	{% if item.info.title %}<p><b>title</b> : {{item.info.title}}</p>{% endif %}
 	{% if item.info.album %}<p><b>album</b> : {{item.info.album}}</p>{% endif %}
@@ -41,7 +55,3 @@
 	<!--todo: subtitles-->
 </ul>
 {%endblock content%}
-
-{%block footer_addition%}
-<p>kodi plugin url : {{data_url}}</p>
-{%endblock%}

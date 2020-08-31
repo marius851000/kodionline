@@ -4,7 +4,7 @@ use crate::{
     format_to_string, get_art_link_subcontent, get_media_link_resolved_url,
     get_media_link_subcontent, get_sub_content_from_parent,
     input::{decode_input, encode_input},
-    Kodi, PathAccessData, Setting, UserConfig,
+    Kodi, PathAccessData, Setting, UserConfig, PathAccessFormat
 };
 
 use log::error;
@@ -15,7 +15,7 @@ use serde::Serialize;
 #[derive(Serialize)]
 pub struct PagePluginMedia {
     item: ListItem,
-    data_url: String,
+    access: PathAccessFormat,
     plugin_type: String,
     title_rendered: Option<String>,
     media_url: String,
@@ -34,20 +34,18 @@ pub struct SubContentDisplay {
 #[derive(Serialize)]
 pub struct PagePluginFolder {
     all_sub_content: Vec<SubContentDisplay>,
-    data_url: String,
+    access: PathAccessFormat,
     plugin_type: String,
     title_rendered: Option<String>,
-    encoded_input: String,
 }
 
 #[derive(Serialize)]
 pub struct PagePluginKeyboard {
     plugin_type: String,
-    data_url: String,
+    access: PathAccessFormat,
     title_rendered: Option<String>,
     parent_path: String,
     parent_input_encoded: String,
-    input_encoded: String,
     keyboard_default: Option<String>,
     keyboard_heading: Option<String>,
     keyboard_hidden: bool,
@@ -132,7 +130,7 @@ pub fn render_plugin(
 
                     let data = PagePluginMedia {
                         item: resolved_listitem,
-                        data_url: current_access.path,
+                        access: PathAccessFormat::new_from_pathaccessdata(current_access),
                         plugin_type,
                         title_rendered,
                         media_url,
@@ -174,10 +172,9 @@ pub fn render_plugin(
                             })
                             .collect(),
 
-                        data_url: current_access.path,
+                        access: PathAccessFormat::new_from_pathaccessdata(current_access),
                         plugin_type,
                         title_rendered,
-                        encoded_input: encode_input(&current_access.input),
                     };
                     Template::render("plugin_folder", data)
                 }
@@ -192,12 +189,11 @@ pub fn render_plugin(
             #[allow(clippy::or_fun_call)]
             let data = PagePluginKeyboard {
                 plugin_type,
-                data_url: current_access.path,
+                access: PathAccessFormat::new_from_pathaccessdata(current_access),
                 title_rendered,
                 parent_path: parent_path.unwrap_or("".to_string()),
                 //TODO: replace encode_input(&decode_input(...)) by clone/copy/to_string/...
                 parent_input_encoded: encode_input(&decode_input(parent_input)),
-                input_encoded: encode_input(&current_access.input),
                 keyboard_default: keyboard.default.clone(),
                 keyboard_hidden: keyboard.hidden,
                 keyboard_heading: keyboard.heading,
