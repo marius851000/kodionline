@@ -6,7 +6,7 @@
 <ul class="list_media">
 	{%for sub_content in all_sub_content %}
 	<li class="media_in_list">
-		<a href="/plugin?path={{sub_content.data.url | safe | urlencode}}&parent_path={{access.path_safe | safe | urlencode}}&parent_input={{access.input_encoded | safe}}">
+		<a href="/plugin?path={{sub_content.data.url | safe | urlencode}}&parent_path={{access.path_safe | safe}}&parent_input={{access.input_encoded | safe}}">
 			<div class="subelem_title">{{sub_content.label_html | safe}}</div>
 			{% if sub_content.art_url %}
 				<img class="illustration" src="{{sub_content.art_url}}" />

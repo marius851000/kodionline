@@ -35,6 +35,7 @@ where
     F: Fn(&ListItem) -> Option<String>,
 {
     let create_result_for_url = |data_url: String| -> Option<ServeDataFromPlugin> {
+        println!("found {:?}", data_url);
         if should_serve_file(&data_url) {
             //TODO: check if the file is permitted to be read
             Some(ServeDataFromPlugin::NamedFile(
@@ -62,7 +63,9 @@ where
             get_sub_content_from_parent(&kodi, &parent_access, &access.path)
         {
             if let Some(data_url) = get_path_function(&sub_content_from_parent.listitem) {
-                return create_result_for_url(data_url);
+                if !data_url.starts_with("plugin://") {
+                    return create_result_for_url(data_url);
+                }
             }
         }
     };
