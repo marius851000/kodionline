@@ -12,7 +12,7 @@ pub struct UserConfig {
     pub format_order: Vec<String>,
 }
 
-const URISPECIAL: &AsciiSet = &CONTROLS.add(b'%').add(b'!').add(b'=');
+const URISPECIAL: &AsciiSet = &CONTROLS.add(b'%').add(b'!').add(b'.');
 
 impl UserConfig {
     /// create a user config based on an [`HashMap`] of [`String`] with a [`String`] keyword
@@ -86,7 +86,7 @@ impl UserConfig {
 
     /// Create a new [`UserConfig`] based on the given uri (if existing). Value use the default value if unspecified or the uri is [`None`]
     ///
-    /// the URI is encoded under the form: ``key=value!key2=value2``. the key and value are percent decoded after parsing.
+    /// the URI is encoded under the form: ``key.value!key2.value2``. the key and value are percent decoded after parsing.
     ///
     /// The resulting hashmap is then parsed by [`UserConfig::new_from_dict`].
     ///
@@ -101,11 +101,11 @@ impl UserConfig {
     ///
     /// assert_eq!(
     ///     UserConfig {
-    ///         language_order: vec!["fr".into(), "!nv/li-=d".into()],
+    ///         language_order: vec!["fr".into(), "!nv.li-=d".into()],
     ///         resolution_order: vec!["la%li!".into()],
     ///         .. UserConfig::default()
     ///     },
-    ///     UserConfig::new_from_optional_uri(Some("lang_ord=fr:%21nv/li-%3dd!res_ord=la%25li%21".into()))
+    ///     UserConfig::new_from_optional_uri(Some("lang_ord.fr:%21nv%2eli-=d!res_ord.la%25li%21".into()))
     /// );
     /// ```
     pub fn new_from_optional_uri(uri: Option<String>) -> Self {
@@ -113,7 +113,7 @@ impl UserConfig {
             Some(uri) => {
                 let mut result_hashmap = HashMap::new();
                 for section in uri.split('!') {
-                    let mut splited = section.split('=');
+                    let mut splited = section.split('.');
                     let key = percent_decode_str(&match splited.next() {
                         Some(v) => v,
                         None => continue,
@@ -136,7 +136,7 @@ impl UserConfig {
 
     /// Encode into a [`String`] this configuration
     ///
-    /// the string is under the form ``key=value!key2=value2``. `!`, `=`, `%`, controls and utf-8 characters of key and value are url encoded.
+    /// the string is under the form ``key.value!key2.value2``. `!`, `.`, `%`, controls and utf-8 characters of key and value are url encoded.
     ///
     /// The string can be decoded with [`UserConfig::new_from_optional_uri`].
     ///
@@ -171,7 +171,7 @@ impl UserConfig {
                 first_element = false;
             }
             result.push_str(&utf8_percent_encode(key, URISPECIAL).to_string());
-            result.push('=');
+            result.push('.');
             result.push_str(&utf8_percent_encode(value, URISPECIAL).to_string());
         }
         result
