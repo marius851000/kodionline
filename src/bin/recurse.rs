@@ -102,10 +102,11 @@ fn main() -> ExitCode {
             kodi_recurse_par::<(), _, _>(
                 kodi,
                 access,
-                None,
-                move |page, _| {
-                    if check_media {
-                        if let Some(resolved_listitem) = &page.resolved_listitem {
+                (),
+                move |info, _| {
+                    let page = &info.page;
+                    if let Some(resolved_listitem) = &page.resolved_listitem {
+                        if check_media {
                             if let Some(media_url) = &resolved_listitem.path {
                                 let resp = client.clone().get(media_url).send().unwrap();
                                 match resp.status() {
@@ -117,8 +118,19 @@ fn main() -> ExitCode {
                                 };
                             };
                         };
+                        if let Some(sub_content_from_parent) = info.sub_content_from_parent {
+                            if !sub_content_from_parent.listitem.is_playable() {
+                                panic!("the data at {:?} is not marked as playable by one of it parent, but it contain a resolved listitem", info.access)
+                            };
+                        };
+                    } else {
+                        if let Some(sub_content_from_parent) = info.sub_content_from_parent {
+                            if sub_content_from_parent.listitem.is_playable() {
+                                panic!("the data at {:?} is marked as playable by one of it parent, but it isn't resolved", info.access)
+                            };
+                        };
                     };
-                    None
+                    ()
                 },
                 |_, _| false,
                 jobs,

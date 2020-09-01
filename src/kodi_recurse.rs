@@ -1,10 +1,17 @@
-use crate::data::{KodiResult, Page};
+use crate::data::{KodiResult, Page, SubContent};
 use crate::{Kodi, PathAccessData};
 
 use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, Condvar, Mutex, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
+
+#[derive(Clone)]
+pub struct RecurseInfo<'a> {
+    pub page: &'a Page,
+    pub sub_content_from_parent: Option<&'a SubContent>,
+    pub access: &'a PathAccessData,
+}
 
 struct SpawnNewThreadData {
     thread_nb: usize,
@@ -48,27 +55,30 @@ impl SpawnNewThreadData {
 fn kodi_recurse_inner_thread<
     'a,
     T: 'static + Clone + Send,
-    F: 'static + Clone + Fn(&Page, Option<T>) -> Option<T> + Clone + Send,
-    C: 'static + Fn(&Page, Option<&T>) -> bool + Clone + Send,
+    F: 'static + Clone + Fn(&RecurseInfo, T) -> T + Clone + Send,
+    C: 'static + Fn(&RecurseInfo, &T) -> bool + Clone + Send,
 >(
     kodi: Arc<Kodi>,
     func: F,
     skip_this_and_children: C,
     parent: Option<Page>,
     access: PathAccessData,
-    data: Option<T>,
+    data: T,
     spawn_thread_data: Arc<SpawnNewThreadData>,
     have_decremented: Arc<AtomicBool>,
 ) {
-    //parent, access, data, Fn(Option<Page>, PathAccessData, Option<T>)
+    //parent, access, data, Fn(Option<Page>, PathAccessData, T)
     let mut actual_page = match kodi.invoke_sandbox(&access).unwrap() {
         KodiResult::Content(p) => p,
         other => panic!("can't use {:?} in a recursive context", other),
     };
 
+    let mut sub_content_from_parent = None;
+
     if let Some(resolved_listitem) = actual_page.resolved_listitem.as_mut() {
         if let Some(parent_page) = parent.as_ref() {
             for parent_sub_content in &parent_page.sub_content {
+                sub_content_from_parent = Some(parent_sub_content);
                 if parent_sub_content.url == access.path {
                     resolved_listitem.extend(parent_sub_content.listitem.clone());
                 };
@@ -76,7 +86,13 @@ fn kodi_recurse_inner_thread<
         };
     };
 
-    let skip_this_element = skip_this_and_children(&actual_page, data.as_ref());
+    let info = RecurseInfo {
+        page: &actual_page,
+        sub_content_from_parent,
+        access: &access
+    };
+
+    let skip_this_element = skip_this_and_children(&info, &data);
 
     if skip_this_element {
         spawn_thread_data.decrement_worker();
@@ -84,7 +100,8 @@ fn kodi_recurse_inner_thread<
         return;
     }
 
-    let data_for_child = func(&actual_page, data);
+
+    let data_for_child = func(&info, data);
 
     spawn_thread_data.decrement_worker();
     have_decremented.store(true, Ordering::Relaxed);
@@ -127,14 +144,8 @@ fn kodi_recurse_inner_thread<
                     spawn_thread_data.decrement_worker();
                 };
                 spawn_thread_data.poison();
-                for thread in threads.drain(..) {
-                    if let Err(_) = thread.0.join() {
-                        if thread.1.fetch_or(false, Ordering::Relaxed) == false {
-                            spawn_thread_data.decrement_worker();
-                        };
-                    }
-                }
-                panic!("a thread panicked while evaluating the access {:?}. cleanly exiting. (err: {:?})", child_access_log, err);
+                println!("a thread panicked while evaluating the access {:?}. cleanly exiting. (err: {:?})", child_access_log, err);
+                break
             }
         } else {
             threads.push((handle, child_have_decrement, child_access_log));
@@ -161,12 +172,12 @@ fn kodi_recurse_inner_thread<
 pub fn kodi_recurse_par<
     'a,
     T: 'static + Clone + Send,
-    F: 'static + Fn(&Page, Option<T>) -> Option<T> + Clone + Send,
-    C: 'static + Fn(&Page, Option<&T>) -> bool + Clone + Send,
+    F: 'static + Fn(&RecurseInfo, T) -> T + Clone + Send,
+    C: 'static + Fn(&RecurseInfo, &T) -> bool + Clone + Send,
 >(
     kodi: Kodi,
     access: PathAccessData,
-    data: Option<T>,
+    data: T,
     func: F,
     skip_this_and_children: C,
     thread_nb: usize,
