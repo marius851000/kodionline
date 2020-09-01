@@ -9,7 +9,11 @@ requested_plugin_path = None
 output_file = None
 expected_input = []
 
-special_data = {}
+special_data = {
+    "language_order": None,
+    "resolution_order": None,
+    "format_order": None,
+}
 
 list_key = None
 for arg in sys.argv[1:]:
