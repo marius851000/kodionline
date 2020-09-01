@@ -9,15 +9,25 @@
 	{% set_global self_link_no_param_safe = self_link_no_param_safe ~ "&parent_path=" ~ parent.path_safe ~ "&parent_input=" ~ parent.input_encoded %}
 {% endif %}
 
+{% set_global media_type = plugin_type %}
+{% if item.category %}
+	{% if item.category == "audio" %}
+		{% set_global media_type = "audio" %}
+	{% elif item.category == "video" %}
+		{% set_global media_type = "video" %}
+	{% endif %}
+	{# TODO: what if it isn't reconized ? #}
+{% endif %}
+
 <div class = "main_media">
-	{%if plugin_type == "video"%}
+	{%if media_type == "video"%}
 		<video controls>
 			<source src="{{media_url | safe}}" />
 			{#{% for subtitle in item.subtitles %}
 				<track kind="captions" src="{{subtitle}}" srclang="en" label="English"/>
 			{% endfor %}#}
 		</video>
-	{%elif plugin_type == "audio"%}
+	{%elif media_type == "audio"%}
 		<audio controls>
 			<source src="{{media_url | safe}}" />
 		</audio>
