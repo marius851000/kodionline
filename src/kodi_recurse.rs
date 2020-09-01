@@ -128,8 +128,8 @@ fn kodi_recurse_inner_thread<
     if let Some(resolved_listitem) = actual_page.resolved_listitem.as_mut() {
         if let Some(parent_page) = parent.as_ref() {
             for parent_sub_content in &parent_page.sub_content {
-                sub_content_from_parent = Some(parent_sub_content);
                 if parent_sub_content.url == access.path {
+                    sub_content_from_parent = Some(parent_sub_content);
                     resolved_listitem.extend(parent_sub_content.listitem.clone());
                 };
             }
