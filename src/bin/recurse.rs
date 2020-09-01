@@ -112,29 +112,29 @@ fn main() -> ExitCode {
                 access,
                 (),
                 move |info, _| {
-                    let page = &info.page;
+                    let page = info.get_page();
                     if let Some(resolved_listitem) = &page.resolved_listitem {
                         if check_media {
                             if let Some(media_url) = &resolved_listitem.path {
                                 let resp = client.clone().get(media_url).send().unwrap();
                                 match resp.status() {
                                     StatusCode::OK => (),
-                                    err_code => panic!(
+                                    err_code => info.add_error_string(format!(
                                         "getting the media at {:?} returned the error code {}",
                                         media_url, err_code
-                                    ),
+                                    )),
                                 };
                             };
                         };
                         if let Some(sub_content_from_parent) = info.sub_content_from_parent {
                             if !sub_content_from_parent.listitem.is_playable() {
-                                panic!("the data at {:?} is not marked as playable by one of it parent, but it contain a resolved listitem", info.access)
+                                info.add_error_string("the data is not marked as playable by one of it parent, but it contain a resolved listitem".to_string());
                             };
                         };
                     } else {
                         if let Some(sub_content_from_parent) = info.sub_content_from_parent {
                             if sub_content_from_parent.listitem.is_playable() {
-                                panic!("the data at {:?} is marked as playable by one of it parent, but it isn't resolved", info.access)
+                                info.add_error_string("the data is marked as playable by one of it parent, but doesn't contain a resolved listitem".to_string());
                             };
                         };
                     };
@@ -150,10 +150,11 @@ fn main() -> ExitCode {
         }
     };
 
+    //TODO: pretty print
     if result.len() > 0 {
         println!("error happended while recursing:");
         for r in &result {
-            println!("    {}", r);
+            println!("    {:?}", r);
         }
     }
 

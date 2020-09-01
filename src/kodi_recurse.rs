@@ -1,24 +1,52 @@
 use crate::data::{KodiResult, Page, SubContent};
-use crate::{Kodi, PathAccessData};
+use crate::{Kodi, PathAccessData, KodiError};
 
 use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, Condvar, Mutex, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-#[derive(Clone)]
-pub struct RecurseInfo<'a> {
-    pub page: &'a Page,
-    pub sub_content_from_parent: Option<&'a SubContent>,
-    pub access: &'a PathAccessData,
+#[derive(Debug, Clone)]
+pub enum RecurseError {
+    CalledError(PathAccessData, String),
+    ThreadPanicked(PathAccessData),
+    KodiCallError(PathAccessData, Arc<KodiError>),
 }
 
+#[derive(Clone)]
+pub struct RecurseInfo<'a> {
+    page: &'a Page,
+    pub sub_content_from_parent: Option<&'a SubContent>,
+    pub access: &'a PathAccessData,
+    pub errors: Vec<RecurseError>,
+}
+
+impl<'a> RecurseInfo<'a> {
+    pub fn get_page(&self) -> &'a Page {
+        return self.page
+    }
+
+    pub fn get_sub_content_from_parent(&self) -> Option<&'a SubContent> {
+        return self.sub_content_from_parent
+    }
+
+    pub fn get_access(&self) -> &'a PathAccessData {
+        self.access
+    }
+
+    pub fn add_error_string(&mut self, error_message: String) {
+        self.errors.push(RecurseError::CalledError(self.access.clone(), error_message));
+    }
+
+}
+
+//TODO: put keep going here
 struct SpawnNewThreadData {
     thread_nb: usize,
     effective_task: Arc<Mutex<usize>>,
     condvar: Condvar,
     is_poisoned: RwLock<bool>,
-    errors: Mutex<Vec<String>>
+    errors: Mutex<Vec<RecurseError>>
 }
 
 impl SpawnNewThreadData {
@@ -41,10 +69,15 @@ impl SpawnNewThreadData {
                 .unwrap()
                 .0;
             //effective_lock = self.condvar.wait(effective_lock).unwrap();
+            //TODO: rather pass the error to the waiter
             if *self.is_poisoned.read().unwrap() == true {
                 panic!()
             }
         }
+    }
+
+    fn get_is_poisoned(&self) -> bool {
+        *self.is_poisoned.read().unwrap()
     }
 
     fn poison(&self) {
@@ -52,8 +85,11 @@ impl SpawnNewThreadData {
         *is_poisoned = true;
     }
 
-    fn add_error(&self, err: String) {
+    fn add_error(&self, err: RecurseError, keep_going: bool) {
         let mut errors_lock = self.errors.lock().unwrap();
+        if !keep_going {
+            self.poison();
+        };
         errors_lock.push(err);
     }
 }
@@ -61,8 +97,8 @@ impl SpawnNewThreadData {
 fn kodi_recurse_inner_thread<
     'a,
     T: 'static + Clone + Send,
-    F: 'static + Clone + Fn(&RecurseInfo, T) -> T + Clone + Send,
-    C: 'static + Fn(&RecurseInfo, &T) -> bool + Clone + Send,
+    F: 'static + Clone + Fn(&mut RecurseInfo, T) -> T + Clone + Send,
+    C: 'static + Fn(&mut RecurseInfo, &T) -> bool + Clone + Send,
 >(
     kodi: Arc<Kodi>,
     func: F,
@@ -75,9 +111,16 @@ fn kodi_recurse_inner_thread<
     keep_going: bool
 ) {
     //parent, access, data, Fn(Option<Page>, PathAccessData, T)
-    let mut actual_page = match kodi.invoke_sandbox(&access).unwrap() {
-        KodiResult::Content(p) => p,
-        other => panic!("can't use {:?} in a recursive context", other),
+    let mut actual_page = match kodi.invoke_sandbox(&access) {
+        Ok(result) => match result {
+            KodiResult::Content(p) => p,
+            other => panic!("can't use {:?} in a recursive context", other),//TODO: remove this panic
+        },
+        Err(err) => {
+            spawn_thread_data.add_error(RecurseError::KodiCallError(access.clone(), Arc::new(err)), keep_going);
+            spawn_thread_data.decrement_worker();
+            return
+        },
     };
 
     let mut sub_content_from_parent = None;
@@ -93,13 +136,18 @@ fn kodi_recurse_inner_thread<
         };
     };
 
-    let info = RecurseInfo {
+    let mut info = RecurseInfo {
         page: &actual_page,
         sub_content_from_parent,
-        access: &access
+        access: &access,
+        errors: Vec::new(),
     };
 
-    let skip_this_element = skip_this_and_children(&info, &data);
+    let skip_this_element = skip_this_and_children(&mut info, &data);
+
+    for error in info.errors.drain(..) {
+        spawn_thread_data.add_error(error, keep_going);
+    };
 
     if skip_this_element {
         spawn_thread_data.decrement_worker();
@@ -108,7 +156,11 @@ fn kodi_recurse_inner_thread<
     }
 
 
-    let data_for_child = func(&info, data);
+    let data_for_child = func(&mut info, data);
+
+    for error in info.errors.drain(..) {
+        spawn_thread_data.add_error(error, keep_going);
+    };
 
     spawn_thread_data.decrement_worker();
     have_decremented.store(true, Ordering::Relaxed);
@@ -148,20 +200,18 @@ fn kodi_recurse_inner_thread<
 
         // ensure at least one thread is working
         if last_one_possible {
-            if let Err(err) = handle.join() {
+            if let Err(_err) = handle.join() {
                 if child_have_decrement.fetch_or(false, Ordering::Relaxed) == false {
                     spawn_thread_data.decrement_worker();
                 };
-                if !keep_going {
-                    spawn_thread_data.poison();
-                }
-                spawn_thread_data.add_error(format!("a thread panicked while evaluating the access {:?}. cleanly exiting. (err: {:?})", child_access_log, err));
-                if !keep_going {
-                    break
-                }
+                spawn_thread_data.add_error(RecurseError::ThreadPanicked(child_access_log), keep_going);
             }
         } else {
             threads.push((handle, child_have_decrement, child_access_log));
+        }
+
+        if spawn_thread_data.get_is_poisoned() {
+            break
         }
     }
 
@@ -185,8 +235,8 @@ fn kodi_recurse_inner_thread<
 pub fn kodi_recurse_par<
     'a,
     T: 'static + Clone + Send,
-    F: 'static + Fn(&RecurseInfo, T) -> T + Clone + Send,
-    C: 'static + Fn(&RecurseInfo, &T) -> bool + Clone + Send,
+    F: 'static + Fn(&mut RecurseInfo, T) -> T + Clone + Send,
+    C: 'static + Fn(&mut RecurseInfo, &T) -> bool + Clone + Send,
 >(
     kodi: Kodi,
     access: PathAccessData,
@@ -195,7 +245,7 @@ pub fn kodi_recurse_par<
     skip_this_and_children: C,
     thread_nb: usize,
     keep_going: bool,
-) -> Vec<String> {
+) -> Vec<RecurseError> {
     if thread_nb == 0 {
         panic!()
     }
