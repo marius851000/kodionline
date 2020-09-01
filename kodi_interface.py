@@ -10,9 +10,9 @@ output_file = None
 expected_input = []
 
 special_data = {
-    "language_order": None,
-    "resolution_order": None,
-    "format_order": None,
+    "language_order": [],
+    "resolution_order": [],
+    "format_order": [],
 }
 
 list_key = None
