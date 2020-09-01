@@ -18,7 +18,7 @@ fn main() -> ExitCode {
         )
         .arg(
             Arg::with_name("kodi_path")
-                .short("k")
+                .short("r")
                 .long("kodi_path")
                 .help("path to kodi root directory")
                 .takes_value(true),
@@ -38,6 +38,12 @@ fn main() -> ExitCode {
                 .help("the max number of running thread")
                 .default_value("1")
                 .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("keep_going")
+                .short("k")
+                .long("keep_going")
+                .help("still continue the recursive browsing even when an error occurred")
         )
         .subcommand(
             SubCommand::with_name("check")
@@ -94,7 +100,9 @@ fn main() -> ExitCode {
 
     let kodi = Kodi::new(&setting.kodi_path, u64::MAX, 200);
 
-    match app_m.subcommand() {
+    let keep_going = app_m.is_present("keep_going");
+
+    let result = match app_m.subcommand() {
         ("check", Some(check_m)) => {
             //TODO: more log
             let check_media = check_m.is_present("check_media");
@@ -133,12 +141,19 @@ fn main() -> ExitCode {
                     ()
                 },
                 |_, _| false,
-                jobs,
-            );
+                jobs, keep_going
+            )
         }
         _ => {
             println!("no sub-command given");
             return ExitCode::FAILURE;
+        }
+    };
+
+    if result.len() > 0 {
+        println!("error happended while recursing:");
+        for r in &result {
+            println!("    {}", r);
         }
     }
 

@@ -18,6 +18,7 @@ struct SpawnNewThreadData {
     effective_task: Arc<Mutex<usize>>,
     condvar: Condvar,
     is_poisoned: RwLock<bool>,
+    errors: Mutex<Vec<String>>
 }
 
 impl SpawnNewThreadData {
@@ -50,6 +51,11 @@ impl SpawnNewThreadData {
         let mut is_poisoned = self.is_poisoned.write().unwrap();
         *is_poisoned = true;
     }
+
+    fn add_error(&self, err: String) {
+        let mut errors_lock = self.errors.lock().unwrap();
+        errors_lock.push(err);
+    }
 }
 
 fn kodi_recurse_inner_thread<
@@ -66,6 +72,7 @@ fn kodi_recurse_inner_thread<
     data: T,
     spawn_thread_data: Arc<SpawnNewThreadData>,
     have_decremented: Arc<AtomicBool>,
+    keep_going: bool
 ) {
     //parent, access, data, Fn(Option<Page>, PathAccessData, T)
     let mut actual_page = match kodi.invoke_sandbox(&access).unwrap() {
@@ -123,6 +130,7 @@ fn kodi_recurse_inner_thread<
         let spawn_thread_data_cloned = spawn_thread_data.clone();
         let child_have_decrement = Arc::new(AtomicBool::new(false));
         let child_have_decrement_cloned = child_have_decrement.clone();
+        let keep_going_cloned = keep_going;
 
         let handle = thread::spawn(move || {
             kodi_recurse_inner_thread(
@@ -134,6 +142,7 @@ fn kodi_recurse_inner_thread<
                 child_data_cloned,
                 spawn_thread_data_cloned,
                 child_have_decrement_cloned,
+                keep_going_cloned
             )
         });
 
@@ -143,9 +152,13 @@ fn kodi_recurse_inner_thread<
                 if child_have_decrement.fetch_or(false, Ordering::Relaxed) == false {
                     spawn_thread_data.decrement_worker();
                 };
-                spawn_thread_data.poison();
-                println!("a thread panicked while evaluating the access {:?}. cleanly exiting. (err: {:?})", child_access_log, err);
-                break
+                if !keep_going {
+                    spawn_thread_data.poison();
+                }
+                spawn_thread_data.add_error(format!("a thread panicked while evaluating the access {:?}. cleanly exiting. (err: {:?})", child_access_log, err));
+                if !keep_going {
+                    break
+                }
             }
         } else {
             threads.push((handle, child_have_decrement, child_access_log));
@@ -181,7 +194,8 @@ pub fn kodi_recurse_par<
     func: F,
     skip_this_and_children: C,
     thread_nb: usize,
-) {
+    keep_going: bool,
+) -> Vec<String> {
     if thread_nb == 0 {
         panic!()
     }
@@ -193,7 +207,10 @@ pub fn kodi_recurse_par<
         effective_task: Arc::new(Mutex::new(1)),
         condvar: Condvar::new(),
         is_poisoned: RwLock::new(false),
+        errors: Mutex::new(Vec::new()),
     });
+
+    let spawn_thread_data_cloned = spawn_thread_data.clone();
     let original_thread = thread::spawn(move || {
         kodi_recurse_inner_thread(
             kodi,
@@ -202,10 +219,13 @@ pub fn kodi_recurse_par<
             None,
             access,
             data,
-            spawn_thread_data,
+            spawn_thread_data_cloned,
             Arc::new(AtomicBool::new(false)),
+            keep_going,
         )
     });
 
     original_thread.join().unwrap();
+
+    return spawn_thread_data.errors.lock().unwrap().clone();
 }
