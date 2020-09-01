@@ -22,14 +22,16 @@ pkgs.stdenv.mkDerivation {
 		mock
 		lxml
 		urllib3
+		pkgs.openssl
 	];
 
 	nativeBuildInputs = with pkgs; [
 		fish
 		python2
 		urlencode
+		pkg-config
 	];
- 	
+
 	NIX_ENFORCE_PURITY=0;
 
 	shellHook = ''

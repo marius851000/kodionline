@@ -2,8 +2,10 @@
 //TODO: use env_logger
 use clap::{App, Arg, SubCommand};
 use kodionline::{kodi_recurse_par, Kodi, PathAccessData, Setting};
+use reqwest::{blocking::ClientBuilder, StatusCode};
 use std::fs::File;
 use std::process::ExitCode;
+use std::sync::Arc;
 
 fn main() -> ExitCode {
     let app_m = App::new("kodi recurse")
@@ -35,11 +37,16 @@ fn main() -> ExitCode {
                 .long("jobs")
                 .help("the max number of running thread")
                 .default_value("1")
-                .takes_value(true)
+                .takes_value(true),
         )
         .subcommand(
             SubCommand::with_name("check")
-                .about("check the validity of the given kodi path and their child"),
+                .about("check the validity of the given kodi path and their child")
+                .arg(
+                    Arg::with_name("check_media")
+                        .long("check_media")
+                        .help("check the media in resolved listitem. Will produce more network request.")
+                ),
         )
         .get_matches();
 
@@ -75,8 +82,8 @@ fn main() -> ExitCode {
             Ok(v) => v,
             Err(_) => {
                 println!("impossible to parse the number {}", jobs_str);
-                return ExitCode::FAILURE
-            },
+                return ExitCode::FAILURE;
+            }
         },
         None => 1,
     };
@@ -88,9 +95,34 @@ fn main() -> ExitCode {
     let kodi = Kodi::new(&setting.kodi_path, u64::MAX, 200);
 
     match app_m.subcommand() {
-        ("check", Some(_check_m)) => {
+        ("check", Some(check_m)) => {
             //TODO: more log
-            kodi_recurse_par::<(), _, _>(kodi, access, None, |_, _| None, |_, _| false, jobs);
+            let check_media = check_m.is_present("check_media");
+            let client = Arc::new(ClientBuilder::new().referer(false).build().unwrap());
+            kodi_recurse_par::<(), _, _>(
+                kodi,
+                access,
+                None,
+                move |page, _| {
+                    if check_media {
+                        if let Some(resolved_listitem) = &page.resolved_listitem {
+                            if let Some(media_url) = &resolved_listitem.path {
+                                let resp = client.clone().get(media_url).send().unwrap();
+                                match resp.status() {
+                                    StatusCode::OK => (),
+                                    err_code => panic!(
+                                        "getting the media at {:?} returned the error code {}",
+                                        media_url, err_code
+                                    ),
+                                };
+                            };
+                        };
+                    };
+                    None
+                },
+                |_, _| false,
+                jobs,
+            );
         }
         _ => {
             println!("no sub-command given");

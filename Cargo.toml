@@ -20,6 +20,7 @@ percent-encoding = "2.1.0"
 log = "0.4.11"
 clap = "2.33.3"
 rayon = "1.4.0"
+reqwest = { version="0.10.8", features = ["blocking"] }
 
 [dependencies.rocket_contrib]
 version = "0.4.5"

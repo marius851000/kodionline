@@ -1,10 +1,10 @@
 use crate::data::{KodiResult, Page};
 use crate::{Kodi, PathAccessData};
 
-use std::time::Duration;
-use std::sync::{Arc, Mutex, Condvar, RwLock, atomic::AtomicBool, atomic::Ordering};
+use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, Condvar, Mutex, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 struct SpawnNewThreadData {
     thread_nb: usize,
@@ -25,9 +25,13 @@ impl SpawnNewThreadData {
         loop {
             if *effective_lock < self.thread_nb {
                 *effective_lock += 1;
-                return *effective_lock == self.thread_nb
+                return *effective_lock == self.thread_nb;
             };
-            effective_lock = self.condvar.wait_timeout(effective_lock, Duration::from_millis(100)).unwrap().0;
+            effective_lock = self
+                .condvar
+                .wait_timeout(effective_lock, Duration::from_millis(100))
+                .unwrap()
+                .0;
             //effective_lock = self.condvar.wait(effective_lock).unwrap();
             if *self.is_poisoned.read().unwrap() == true {
                 panic!()
@@ -103,7 +107,18 @@ fn kodi_recurse_inner_thread<
         let child_have_decrement = Arc::new(AtomicBool::new(false));
         let child_have_decrement_cloned = child_have_decrement.clone();
 
-        let handle = thread::spawn(move || {kodi_recurse_inner_thread(kodi_cloned, func_cloned, skip_this_and_children, parent_page, child_access, child_data_cloned, spawn_thread_data_cloned, child_have_decrement_cloned)});
+        let handle = thread::spawn(move || {
+            kodi_recurse_inner_thread(
+                kodi_cloned,
+                func_cloned,
+                skip_this_and_children,
+                parent_page,
+                child_access,
+                child_data_cloned,
+                spawn_thread_data_cloned,
+                child_have_decrement_cloned,
+            )
+        });
 
         // ensure at least one thread is working
         if last_one_possible {
@@ -134,7 +149,10 @@ fn kodi_recurse_inner_thread<
                 spawn_thread_data.decrement_worker();
             };
             spawn_thread_data.poison();
-            println!("a thread panicked while evaluating the access {:?}. cleanly exiting. (err: {:?})", thread.2, err);
+            println!(
+                "a thread panicked while evaluating the access {:?}. cleanly exiting. (err: {:?})",
+                thread.2, err
+            );
         }
     }
 }
@@ -165,7 +183,18 @@ pub fn kodi_recurse_par<
         condvar: Condvar::new(),
         is_poisoned: RwLock::new(false),
     });
-    let original_thread = thread::spawn(move || kodi_recurse_inner_thread(kodi, func, skip_this_and_children, None, access, data, spawn_thread_data, Arc::new(AtomicBool::new(false))));
+    let original_thread = thread::spawn(move || {
+        kodi_recurse_inner_thread(
+            kodi,
+            func,
+            skip_this_and_children,
+            None,
+            access,
+            data,
+            spawn_thread_data,
+            Arc::new(AtomicBool::new(false)),
+        )
+    });
 
     original_thread.join().unwrap();
 }
