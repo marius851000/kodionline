@@ -14,7 +14,7 @@ impl Default for Setting {
         Self {
             plugins_to_show: Vec::new(),
             kodi_path: "~/.kodi".into(),
-            python_command: "python3".into(),
+            python_command: "python2".into(), //NOTE: change to python3 once kodi 19 is publicly released
             default_user_config: UserConfig::default(),
         }
     }

@@ -11,11 +11,12 @@ use rocket::State;
 use rocket_contrib::serve::StaticFiles;
 use rocket_contrib::templates::Template;
 
+use clap::{App, Arg};
+
 use kodionline::{Kodi, Setting};
 
 use serde::Serialize;
 use std::fs::File;
-use std::io;
 
 #[derive(Serialize)]
 struct PageIndex {
@@ -31,12 +32,20 @@ fn render_index(setting: State<Setting>) -> Template {
 }
 
 fn main() {
-    let setting: Setting = match File::open("./setting.json") {
-        Ok(file) => serde_json::from_reader(file).unwrap(),
-        Err(err) => match err.kind() {
-            io::ErrorKind::NotFound => Setting::default(),
-            err => panic!(err),
-        },
+    let app_m = App::new("kodi online")
+        .arg(
+            Arg::with_name("config")
+                .short("c")
+                .long("config")
+                .help("path to the setting file")
+                .takes_value(true),
+        ).get_matches();
+
+    let setting = if let Some(config_path) = app_m.value_of("config") {
+        let file = File::open(config_path).unwrap();
+        serde_json::from_reader(file).unwrap()
+    } else {
+        Setting::default()
     };
 
     let mut kodi = if Environment::active().unwrap().is_dev() {
