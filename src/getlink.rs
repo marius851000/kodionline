@@ -60,9 +60,9 @@ pub fn get_served_data_url(
         "{}path={}&input={}&parent_path={}&parent_input={}&c={}",
         prefix,
         utf8_percent_encode(path, NON_ALPHANUMERIC),
-        encode_input(&input),
+        utf8_percent_encode(&encode_input(&input), NON_ALPHANUMERIC),
         utf8_percent_encode(&parent.path, NON_ALPHANUMERIC),
-        encode_input(&parent.input),
+        utf8_percent_encode(&encode_input(&parent.input), NON_ALPHANUMERIC),
         utf8_percent_encode(&parent.config.encode_to_uri(), NON_ALPHANUMERIC), //TODO: remove what is present in default configuration
     )
 }
