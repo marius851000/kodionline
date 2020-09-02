@@ -109,7 +109,7 @@ impl UserConfig {
     /// # Example
     ///
     /// ```
-    /// use kodionline::UserConfig;
+    /// use kodi_rust::UserConfig;
     /// use std::collections::HashMap;
     ///
     /// let mut config = HashMap::new();
@@ -186,7 +186,7 @@ impl UserConfig {
     /// # Example
     ///
     /// ```
-    /// use kodionline::UserConfig;
+    /// use kodi_rust::UserConfig;
     ///
     /// let mut source = UserConfig::new_empty();
     /// *source.language_order = vec!["fr".into(), "!nv.li-=d".into()];
@@ -234,7 +234,7 @@ impl UserConfig {
     /// # Example
     ///
     /// ```
-    /// use kodionline::UserConfig;
+    /// use kodi_rust::UserConfig;
     ///
     /// let mut source = UserConfig::new_empty();
     /// *source.language_order = vec!["fr".into(), "!nv/li-=d".into()];
@@ -275,7 +275,7 @@ impl UserConfig {
     /// # Example
     ///
     /// ```
-    /// use kodionline::UserConfig;
+    /// use kodi_rust::UserConfig;
     ///
     /// let mut static_config = UserConfig::new_empty();
     /// *static_config.language_order = vec!["fr".into()];

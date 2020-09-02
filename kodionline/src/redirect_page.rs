@@ -1,4 +1,4 @@
-use crate::{
+use kodi_rust::{
     data::{KodiResult, ListItem},
     encode_url, get_sub_content_from_parent, should_serve_file, Kodi, PathAccessData, Setting,
     UserConfig,
@@ -123,8 +123,8 @@ pub fn redirect_media(
 
     redirect_data_generic(
         kodi,
-        PathAccessData::new(path, input, final_config.clone()),
-        PathAccessData::try_create_from_url(parent_path, parent_input, final_config),
+        PathAccessData::new(path, input.map(|x| x.as_str()), final_config.clone()),
+        PathAccessData::try_create_from_url(parent_path, parent_input.map(|x| x.as_str()), final_config),
         "media",
         |x| x.path.clone(),
     )
@@ -150,8 +150,8 @@ pub fn redirect_art(
 
     redirect_data_generic(
         kodi,
-        PathAccessData::new(path, input, final_config.clone()),
-        PathAccessData::try_create_from_url(parent_path, parent_input, final_config),
+        PathAccessData::new(path, input.map(|x| x.as_str()), final_config.clone()),
+        PathAccessData::try_create_from_url(parent_path, parent_input.map(|x| x.as_str()), final_config),
         "art",
         |x| match &x.arts.get(&category) {
             //TODO: this line is anormaly long. Find how to shorten it

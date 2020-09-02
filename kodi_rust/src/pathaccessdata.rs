@@ -4,7 +4,6 @@ use crate::{
     UserConfig,
 };
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
-use rocket::http::RawStr;
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
@@ -15,7 +14,7 @@ pub struct PathAccessData {
 }
 
 impl PathAccessData {
-    pub fn new(path: String, input: Option<&RawStr>, config: UserConfig) -> Self {
+    pub fn new(path: String, input: Option<&str>, config: UserConfig) -> Self {
         PathAccessData {
             path,
             input: decode_input(input),
@@ -25,7 +24,7 @@ impl PathAccessData {
 
     pub fn try_create_from_url(
         path: Option<String>,
-        input: Option<&RawStr>,
+        input: Option<&str>,
         config: UserConfig,
     ) -> Option<Self> {
         match path {

@@ -1,5 +1,5 @@
-use kodionline::recurse::report::{RecurseReport, ReportKind};
-use kodionline::{PathAccessData, UserConfig};
+use kodi_recurse::{RecurseReport, ReportKind};
+use kodi_rust::{PathAccessData, UserConfig};
 
 fn main() {
     println!("displaying the various report kind:");

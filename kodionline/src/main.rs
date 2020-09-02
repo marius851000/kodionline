@@ -2,9 +2,9 @@
 #[macro_use]
 extern crate rocket;
 
-use kodi_rust::plugin_page::static_rocket_route_info_for_render_plugin;
-use kodi_rust::redirect_page::static_rocket_route_info_for_redirect_art;
-use kodi_rust::redirect_page::static_rocket_route_info_for_redirect_media;
+use kodionline::plugin_page::static_rocket_route_info_for_render_plugin;
+use kodionline::redirect_page::static_rocket_route_info_for_redirect_art;
+use kodionline::redirect_page::static_rocket_route_info_for_redirect_media;
 
 use rocket::config::Environment;
 use rocket::State;

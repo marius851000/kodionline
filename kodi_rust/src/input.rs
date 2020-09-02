@@ -1,7 +1,6 @@
 use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
-use rocket::http::RawStr;
 
-pub fn decode_input(inputs_option: Option<&RawStr>) -> Vec<String> {
+pub fn decode_input(inputs_option: Option<&str>) -> Vec<String> {
     match inputs_option {
         Some(inputs_raw) => {
             if inputs_raw.len() == 0 {

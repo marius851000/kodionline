@@ -980,6 +980,7 @@ dependencies = [
  "kodi_rust",
  "reqwest",
  "serde_json",
+ "shell-escape",
 ]
 
 [[package]]
@@ -991,11 +992,8 @@ dependencies = [
  "log 0.4.11",
  "percent-encoding 2.1.0",
  "rayon",
- "rocket",
- "rocket_contrib",
  "serde",
  "serde_json",
- "shell-escape",
  "shellexpand",
  "subprocess",
  "tempfile",
@@ -1007,6 +1005,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "kodi_rust",
+ "log 0.4.11",
  "rocket",
  "rocket_contrib",
  "serde",

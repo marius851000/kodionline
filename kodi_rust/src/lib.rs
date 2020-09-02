@@ -1,8 +1,4 @@
-#![feature(proc_macro_hygiene, decl_macro)]
 #![allow(clippy::module_name_repetitions)]
-
-#[macro_use]
-extern crate rocket;
 
 mod kodi;
 pub use kodi::{Kodi, KodiError};
@@ -22,12 +18,6 @@ pub use pathaccessdata::{PathAccessData, PathAccessFormat};
 
 mod getlink;
 pub use getlink::*;
-
-pub mod plugin_page;
-
-pub mod error_page;
-
-pub mod redirect_page;
 
 mod user_config;
 pub use user_config::{OverridableVec, UserConfig};
@@ -91,10 +81,9 @@ fn test_encode_url() {
 
 use data::{KodiResult, SubContent};
 use log::error;
-use rocket::State;
 
 pub fn get_sub_content_from_parent(
-    kodi: &State<Kodi>,
+    kodi: &Kodi,
     parent_access: &PathAccessData,
     child_path: &str,
 ) -> Option<SubContent> {

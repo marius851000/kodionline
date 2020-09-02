@@ -84,7 +84,7 @@ impl Kodi {
     /// # Examples
     ///
     /// ```
-    /// use kodionline::Kodi;
+    /// use kodi_rust::Kodi;
     /// let kodi = Kodi::new("~/.kodi", 3600, 500);
     /// ```
     pub fn new(path: &str, cache_time: u64, cache_size: usize) -> Self {

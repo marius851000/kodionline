@@ -71,7 +71,7 @@ impl ListItem {
     /// # Example
     ///
     /// ```
-    /// use kodionline::data::ListItem;
+    /// use kodi_rust::data::ListItem;
     ///
     /// let mut playable_listitem = ListItem::default();
     /// playable_listitem.properties.insert("isPlayable".to_string(), "true".to_string());
