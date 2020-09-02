@@ -1,7 +1,7 @@
 #![feature(process_exitcode_placeholder)]
 //TODO: use env_logger
 use clap::{App, Arg, SubCommand};
-use kodionline::recurse::kodi_recurse_par;
+use kodi_recurse::kodi_recurse_par;
 use kodionline::{Kodi, PathAccessData, Setting};
 use reqwest::{blocking::ClientBuilder, StatusCode};
 use std::fs::File;

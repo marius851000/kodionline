@@ -32,8 +32,6 @@ pub mod redirect_page;
 mod user_config;
 pub use user_config::{OverridableVec, UserConfig};
 
-pub mod recurse;
-
 // local use
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 
