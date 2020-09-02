@@ -1,4 +1,4 @@
-use kodionline::{KodiError, PathAccessData};
+use kodi_rust::{KodiError, PathAccessData};
 use console::Style;
 use std::sync::Arc;
 //use shell_escape::escape;

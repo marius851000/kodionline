@@ -2,9 +2,9 @@
 #[macro_use]
 extern crate rocket;
 
-use kodionline::plugin_page::static_rocket_route_info_for_render_plugin;
-use kodionline::redirect_page::static_rocket_route_info_for_redirect_art;
-use kodionline::redirect_page::static_rocket_route_info_for_redirect_media;
+use kodi_rust::plugin_page::static_rocket_route_info_for_render_plugin;
+use kodi_rust::redirect_page::static_rocket_route_info_for_redirect_art;
+use kodi_rust::redirect_page::static_rocket_route_info_for_redirect_media;
 
 use rocket::config::Environment;
 use rocket::State;
@@ -13,7 +13,7 @@ use rocket_contrib::templates::Template;
 
 use clap::{App, Arg};
 
-use kodionline::{Kodi, Setting};
+use kodi_rust::{Kodi, Setting};
 
 use serde::Serialize;
 use std::fs::File;

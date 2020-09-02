@@ -1,5 +1,5 @@
-use kodionline::data::{KodiResult, Page, SubContent};
-use kodionline::{Kodi, PathAccessData};
+use kodi_rust::data::{KodiResult, Page, SubContent};
+use kodi_rust::{Kodi, PathAccessData};
 use crate::report::RecurseReport;
 
 use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, Condvar, Mutex, RwLock};

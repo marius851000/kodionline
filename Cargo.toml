@@ -1,5 +1,6 @@
 [workspace]
 members = [
+	"kodi_rust",
 	"kodionline",
 	"kodi_recurse",
 ]

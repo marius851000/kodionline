@@ -977,17 +977,16 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "console",
- "kodionline",
+ "kodi_rust",
  "reqwest",
  "serde_json",
 ]
 
 [[package]]
-name = "kodionline"
+name = "kodi_rust"
 version = "0.1.0"
 dependencies = [
  "cached",
- "clap",
  "html-escape",
  "log 0.4.11",
  "percent-encoding 2.1.0",
@@ -1000,6 +999,18 @@ dependencies = [
  "shellexpand",
  "subprocess",
  "tempfile",
+]
+
+[[package]]
+name = "kodionline"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "kodi_rust",
+ "rocket",
+ "rocket_contrib",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
