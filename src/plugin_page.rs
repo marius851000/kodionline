@@ -67,10 +67,12 @@ pub fn render_plugin(
     let user_config_encoded = c;
 
     let user_config_in_url = UserConfig::new_from_optional_uri(user_config_encoded);
+    let user_config = user_config_in_url;
+
     let final_config = setting
         .default_user_config
         .clone()
-        .add_config_prioritary(user_config_in_url);
+        .add_config_prioritary(user_config.clone());
 
     let mut splited = path.split('.');
     splited.next();
@@ -89,6 +91,12 @@ pub fn render_plugin(
         path,
         input,
         config: final_config.clone(),
+    };
+
+    let current_access_without_static = {
+        let mut v = current_access.clone();
+        v.config = user_config;
+        v
     };
 
     let parent_access =
@@ -126,7 +134,7 @@ pub fn render_plugin(
                         &media_url,
                         &current_access.path,
                         current_access.input.clone(),
-                        &current_access,
+                        &current_access_without_static,
                     );
 
                     let data = PagePluginMedia {
@@ -155,12 +163,12 @@ pub fn render_plugin(
                                 let label_html = content.listitem.get_display_html();
                                 let is_playable = content.listitem.is_playable();
                                 let media_url =
-                                    get_media_link_subcontent(&content, &current_access);
+                                    get_media_link_subcontent(&content, &current_access_without_static);
                                 let art_url = match content.listitem.get_thumb_category() {
                                     Some(art_category) => Some(get_art_link_subcontent(
                                         &content,
                                         art_category,
-                                        &current_access,
+                                        &current_access_without_static,
                                     )),
                                     None => None,
                                 };

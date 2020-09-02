@@ -3,11 +3,13 @@
 {%block content%}
 
 {# check this work well with no parent used #}
-{% set_global self_link_no_param_safe = "/plugin?path=" ~ access.path_safe ~ "&input" ~ access.input_encoded %}
+{% set_global self_link_end_config = "/plugin?path=" ~ access.path_safe ~ "&input" ~ access.input_encoded %}
 
 {% if parent %}
-	{% set_global self_link_no_param_safe = self_link_no_param_safe ~ "&parent_path=" ~ parent.path_safe ~ "&parent_input=" ~ parent.input_encoded %}
+	{% set_global self_link_end_config = self_link_end_config ~ "&parent_path=" ~ parent.path_safe ~ "&parent_input=" ~ parent.input_encoded %}
 {% endif %}
+
+{% set_global self_link_end_config = self_link_end_config ~ "&c=" ~ access.config_uri_safe %}
 
 {% set_global media_type = plugin_type %}
 {% if item.category %}
@@ -41,7 +43,7 @@
 	<p><strong>avalaible languages</strong>:</p>
 	<ul class="language altlink">
 	{% for language in item.x_avalaible_languages %}
-		<li><a href="{{self_link_no_param_safe}}&c=lang_ord.{{language}}!nc-lang_ord.t">{{language}}</a></li>
+		<li><a href="{{self_link_end_config}}!lang_ord.{{language}}!nc-lang_ord.t">{{language}}</a></li>
 	{% endfor %}
 	</ul>
 {% endif %}

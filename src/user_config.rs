@@ -1,4 +1,4 @@
-use percent_encoding::{percent_decode_str, utf8_percent_encode, AsciiSet, CONTROLS};
+use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
@@ -84,8 +84,6 @@ impl Default for UserConfig {
         }
     }
 }
-
-const URISPECIAL: &AsciiSet = &CONTROLS.add(b'%').add(b'!').add(b'.');
 
 impl UserConfig {
     /// Create a new empty [`UserConfig`]
@@ -225,9 +223,11 @@ impl UserConfig {
 
     /// Encode into a [`String`] this configuration
     ///
-    /// the string is under the form ``key.value!key2.value2``. `!`, `.`, `%`, controls and utf-8 characters of key and value are url encoded.
+    /// the string is under the form ``key.value!key2.value2``. Non alphanumeric (including utf-8 characters) of key and value are url encoded.
     ///
     /// The string can be decoded with [`UserConfig::new_from_optional_uri`].
+    ///
+    /// The result can be safely embedded into html, or any other code that doesn't consider ``%`` and alphanumeric character as special character.
     ///
     /// # Example
     ///
@@ -257,9 +257,9 @@ impl UserConfig {
             } else {
                 first_element = false;
             }
-            result.push_str(&utf8_percent_encode(key, URISPECIAL).to_string());
+            result.push_str(&utf8_percent_encode(key, NON_ALPHANUMERIC).to_string());
             result.push('.');
-            result.push_str(&utf8_percent_encode(value, URISPECIAL).to_string());
+            result.push_str(&utf8_percent_encode(value, NON_ALPHANUMERIC).to_string());
         }
         result
     }

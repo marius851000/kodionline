@@ -8,7 +8,7 @@ pub fn get_media_link_subcontent(content: &SubContent, parent: &PathAccessData) 
     if let Some(media_true_url) = &content.listitem.path {
         get_data_link_resolved_url(&media_true_url, &content.url, Vec::new(), prefix, parent)
     } else {
-        get_served_data_url(&content.url, Vec::new(), prefix, parent)
+        get_served_data_url(prefix, &content.url, Vec::new(), parent)
     }
 }
 
@@ -32,7 +32,7 @@ pub fn get_art_link_subcontent(
     if let Some(Some(art_true_url)) = &content.listitem.arts.get(category) {
         get_data_link_resolved_url(art_true_url, &content.url, Vec::new(), prefix, parent)
     } else {
-        get_served_data_url(&content.url, Vec::new(), prefix, parent)
+        get_served_data_url(prefix, &content.url, Vec::new(), parent)
     }
 }
 
@@ -44,16 +44,16 @@ pub fn get_data_link_resolved_url(
     parent: &PathAccessData,
 ) -> String {
     if should_serve_file(media_url) {
-        get_served_data_url(media_path, input, prefix, parent)
+        get_served_data_url(prefix, media_path, input, parent)
     } else {
         utf8_percent_encode(&media_url.to_string(), &HTMLENCODE).to_string()
     }
 }
 
 pub fn get_served_data_url(
+    prefix: String,
     path: &str,
     input: Vec<String>,
-    prefix: String,
     parent: &PathAccessData,
 ) -> String {
     format!(
@@ -63,6 +63,6 @@ pub fn get_served_data_url(
         utf8_percent_encode(&encode_input(&input), NON_ALPHANUMERIC),
         utf8_percent_encode(&parent.path, NON_ALPHANUMERIC),
         utf8_percent_encode(&encode_input(&parent.input), NON_ALPHANUMERIC),
-        utf8_percent_encode(&parent.config.encode_to_uri(), NON_ALPHANUMERIC), //TODO: remove what is present in default configuration
+        &parent.config.encode_to_uri(),
     )
 }

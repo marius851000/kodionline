@@ -41,6 +41,7 @@ pub struct PathAccessFormat {
     pub path_escaped: String,
     pub input_encoded: String,
     pub config: UserConfig,
+    pub config_uri_safe: String,
 }
 
 impl PathAccessFormat {
@@ -49,6 +50,7 @@ impl PathAccessFormat {
             path_safe: utf8_percent_encode(&path_access_data.path, NON_ALPHANUMERIC).to_string(),
             path_escaped: escape_tag(path_access_data.path),
             input_encoded: encode_input(&path_access_data.input),
+            config_uri_safe: path_access_data.config.encode_to_uri(),
             config: path_access_data.config,
         }
     }
