@@ -15,12 +15,20 @@
 	another working comparaison is that this site is similar to what invidious is for youtube and nitter for twitter.
 </p>
 
-<h2>avalaible plugins</h2>
-<ul>
-	{%for plugin_data in plugins_to_show %}
-	<li>
-		<a href="/plugin?path={{plugin_data[1] | safe | urlencode}}">{{plugin_data[0]}}</a>
-	</li>
-	{%endfor%}
-</ul>
+{% if plugins_to_show %}
+	<h2>avalaible plugins</h2>
+	<ul>
+		{%for plugin_data in plugins_to_show %}
+		<li>
+			<a href="/plugin?path={{plugin_data[1] | safe | urlencode}}">{{plugin_data[0]}}</a>
+		</li>
+		{%endfor%}
+	</ul>
+{% endif %}
+
+<form method="get" action="/plugin">
+	<label for="path_input">use a direct kodi plugin page</label>
+	<input type="text" id="path_input" name="path" /><br />
+	<input type="submit" value="go to the path" />
+</form>
 {%endblock content%}

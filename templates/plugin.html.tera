@@ -4,7 +4,7 @@
 	{% if title_rendered %}
 		{{title_rendered | safe}}
 	{% else %}
-		{{access.path_safe | safe}}
+		{{access.path_escaped | safe}}
 	{%endif%}
 {%endblock title%}
 
