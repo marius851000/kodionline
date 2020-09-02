@@ -162,8 +162,10 @@ pub fn render_plugin(
                             .map(|content| {
                                 let label_html = content.listitem.get_display_html();
                                 let is_playable = content.listitem.is_playable();
-                                let media_url =
-                                    get_media_link_subcontent(&content, &current_access_without_static);
+                                let media_url = get_media_link_subcontent(
+                                    &content,
+                                    &current_access_without_static,
+                                );
                                 let art_url = match content.listitem.get_thumb_category() {
                                     Some(art_category) => Some(get_art_link_subcontent(
                                         &content,

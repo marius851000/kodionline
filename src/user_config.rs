@@ -1,15 +1,15 @@
 use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::ops::{Deref, DerefMut};
 use std::hash::{Hash, Hasher};
+use std::ops::{Deref, DerefMut};
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
 #[serde(from = "Vec<T>")]
 #[serde(into = "Vec<T>")]
 pub struct OverridableVec<T: Clone + Eq + Hash> {
     pub value: Vec<T>,
-    pub no_child: bool
+    pub no_child: bool,
 }
 
 impl<T: Eq + Clone + Hash> OverridableVec<T> {
@@ -79,7 +79,8 @@ impl Default for UserConfig {
     fn default() -> Self {
         Self {
             language_order: vec!["en".into()].into(),
-            resolution_order: vec!["720p".into(), "480p".into(), "360p".into(), "1080p".into()].into(),
+            resolution_order: vec!["720p".into(), "480p".into(), "360p".into(), "1080p".into()]
+                .into(),
             format_order: vec!["mp4".into(), "webm".into(), "ogv".into()].into(),
         }
     }
@@ -128,14 +129,15 @@ impl UserConfig {
     pub fn new_from_dict(mut dict: HashMap<String, String>) -> Self {
         let dict_ref_mut = &mut dict;
 
-        let mut set_double_dot_use_and_drain_if_in_dict = move |result: &mut OverridableVec<String>, keyword: &str| {
-            if let Some(list) = dict_ref_mut.remove(keyword) {
-                **result = split_double_dot(list);
-            }
-            if let Some(first) = dict_ref_mut.remove(&format!("nc-{}", keyword)) {
-                result.no_child = &first == "t";
-            }
-        };
+        let mut set_double_dot_use_and_drain_if_in_dict =
+            move |result: &mut OverridableVec<String>, keyword: &str| {
+                if let Some(list) = dict_ref_mut.remove(keyword) {
+                    **result = split_double_dot(list);
+                }
+                if let Some(first) = dict_ref_mut.remove(&format!("nc-{}", keyword)) {
+                    result.no_child = &first == "t";
+                }
+            };
 
         fn split_double_dot(source_value: String) -> Vec<String> {
             source_value.split(':').map(|v| v.to_string()).collect()
@@ -295,9 +297,15 @@ impl UserConfig {
     /// ```
     pub fn add_config_prioritary(self, prio: Self) -> Self {
         let mut result = prio;
-        result.language_order.add_child_and_reset_no_child(self.language_order);
-        result.resolution_order.add_child_and_reset_no_child(self.resolution_order);
-        result.format_order.add_child_and_reset_no_child(self.format_order);
+        result
+            .language_order
+            .add_child_and_reset_no_child(self.language_order);
+        result
+            .resolution_order
+            .add_child_and_reset_no_child(self.resolution_order);
+        result
+            .format_order
+            .add_child_and_reset_no_child(self.format_order);
         result.clean();
         result
     }

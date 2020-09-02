@@ -1,7 +1,8 @@
 #![feature(process_exitcode_placeholder)]
 //TODO: use env_logger
 use clap::{App, Arg, SubCommand};
-use kodionline::{kodi_recurse_par, Kodi, PathAccessData, Setting};
+use kodionline::recurse::kodi_recurse_par;
+use kodionline::{Kodi, PathAccessData, Setting};
 use reqwest::{blocking::ClientBuilder, StatusCode};
 use std::fs::File;
 use std::process::ExitCode;
@@ -43,16 +44,14 @@ fn main() -> ExitCode {
             Arg::with_name("keep_going")
                 .short("k")
                 .long("keep_going")
-                .help("still continue the recursive browsing even when an error occurred")
+                .help("still continue the recursive browsing even when an error occurred"),
         )
         .subcommand(
             SubCommand::with_name("check")
                 .about("check the validity of the given kodi path and their child")
-                .arg(
-                    Arg::with_name("check_media")
-                        .long("check_media")
-                        .help("check the media in resolved listitem. Will produce more network request.")
-                ),
+                .arg(Arg::with_name("check_media").long("check_media").help(
+                    "check the media in resolved listitem. Will produce more network request.",
+                )),
         )
         .get_matches();
 
@@ -141,7 +140,8 @@ fn main() -> ExitCode {
                     ()
                 },
                 |_, _| false,
-                jobs, keep_going
+                jobs,
+                keep_going,
             )
         }
         _ => {
@@ -154,7 +154,7 @@ fn main() -> ExitCode {
     if result.len() > 0 {
         println!("error happended while recursing:");
         for r in &result {
-            println!("    {:?}", r);
+            r.pretty_print();
         }
     }
 

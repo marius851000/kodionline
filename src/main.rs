@@ -39,7 +39,8 @@ fn main() {
                 .long("config")
                 .help("path to the setting file")
                 .takes_value(true),
-        ).get_matches();
+        )
+        .get_matches();
 
     let setting = if let Some(config_path) = app_m.value_of("config") {
         let file = File::open(config_path).unwrap();
