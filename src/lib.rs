@@ -30,7 +30,7 @@ pub mod error_page;
 pub mod redirect_page;
 
 mod user_config;
-pub use user_config::UserConfig;
+pub use user_config::{UserConfig, OverridableVec};
 
 mod kodi_recurse;
 pub use kodi_recurse::{kodi_recurse_par, RecurseInfo, RecurseError};

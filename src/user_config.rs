@@ -1,34 +1,86 @@
 use percent_encoding::{percent_decode_str, utf8_percent_encode, AsciiSet, CONTROLS};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::ops::{Deref, DerefMut};
+use std::hash::{Hash, Hasher};
 
-//TODO: type for the pair of V, no_child_V (ensure to have the same Serde parsing way)
+#[derive(Default, Clone, Debug, Deserialize, Serialize)]
+#[serde(from = "Vec<T>")]
+#[serde(into = "Vec<T>")]
+pub struct OverridableVec<T: Clone + Eq + Hash> {
+    pub value: Vec<T>,
+    pub no_child: bool
+}
+
+impl<T: Eq + Clone + Hash> OverridableVec<T> {
+    fn add_child_and_reset_no_child(&mut self, child: OverridableVec<T>) {
+        if self.no_child {
+            self.no_child = false;
+        } else {
+            self.value.extend(child.value);
+        }
+    }
+}
+
+impl<T: Eq + Clone + Hash> From<Vec<T>> for OverridableVec<T> {
+    fn from(value: Vec<T>) -> Self {
+        OverridableVec {
+            value,
+            no_child: false,
+        }
+    }
+}
+
+impl<T: Eq + Clone + Hash> From<OverridableVec<T>> for Vec<T> {
+    fn from(overridable: OverridableVec<T>) -> Self {
+        overridable.value
+    }
+}
+
+impl<T: Eq + Clone + Hash> Deref for OverridableVec<T> {
+    type Target = Vec<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl<T: Eq + Clone + Hash> DerefMut for OverridableVec<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.value
+    }
+}
+
+impl<T: Eq + Clone + Hash> PartialEq for OverridableVec<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl<T: Eq + Clone + Hash> Eq for OverridableVec<T> {}
+
+impl<T: Eq + Clone + Hash> Hash for OverridableVec<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.value.hash(state)
+    }
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Hash, Eq)]
 pub struct UserConfig {
     #[serde(default)]
-    pub language_order: Vec<String>,
+    pub language_order: OverridableVec<String>,
     #[serde(default)]
-    pub no_child_language_order: bool,
+    pub resolution_order: OverridableVec<String>,
     #[serde(default)]
-    pub resolution_order: Vec<String>,
-    #[serde(default)]
-    pub no_child_resolution_order: bool,
-    #[serde(default)]
-    pub format_order: Vec<String>,
-    #[serde(default)]
-    pub no_child_format_order: bool,
+    pub format_order: OverridableVec<String>,
 }
 
 impl Default for UserConfig {
     fn default() -> Self {
         Self {
-            language_order: vec!["en".into()],
-            no_child_language_order: false,
-            resolution_order: vec!["720p".into(), "480p".into(), "360p".into(), "1080p".into()],
-            no_child_resolution_order: false,
-            format_order: vec!["mp4".into(), "webm".into(), "ogv".into()],
-            no_child_format_order: false,
+            language_order: vec!["en".into()].into(),
+            resolution_order: vec!["720p".into(), "480p".into(), "360p".into(), "1080p".into()].into(),
+            format_order: vec!["mp4".into(), "webm".into(), "ogv".into()].into(),
         }
     }
 }
@@ -39,12 +91,9 @@ impl UserConfig {
     /// Create a new empty [`UserConfig`]
     pub fn new_empty() -> Self {
         Self {
-            language_order: Vec::new(),
-            no_child_language_order: false,
-            resolution_order: Vec::new(),
-            no_child_resolution_order: false,
-            format_order: Vec::new(),
-            no_child_format_order: false,
+            language_order: OverridableVec::default(),
+            resolution_order: OverridableVec::default(),
+            format_order: OverridableVec::default(),
         }
     }
 
@@ -73,20 +122,20 @@ impl UserConfig {
     ///
     /// let user_config = UserConfig::new_from_dict(config);
     ///
-    /// assert_eq!(user_config.language_order, vec!["fr".to_string(), "en".to_string()]);
-    /// assert_eq!(user_config.resolution_order, vec!["1080p".to_string()]);
-    /// assert_eq!(user_config.no_child_resolution_order, true);
-    /// assert_eq!(user_config.format_order, Vec::<String>::new());
+    /// assert_eq!(*user_config.language_order, vec!["fr".to_string(), "en".to_string()]);
+    /// assert_eq!(*user_config.resolution_order, vec!["1080p".to_string()]);
+    /// assert_eq!(user_config.resolution_order.no_child, true);
+    /// assert_eq!(*user_config.format_order, Vec::<String>::new());
     /// ```
     pub fn new_from_dict(mut dict: HashMap<String, String>) -> Self {
         let dict_ref_mut = &mut dict;
 
-        let mut set_double_dot_use_and_drain_if_in_dict = move |result_list: &mut Vec<String>, result_use: &mut bool, keyword: &str| {
+        let mut set_double_dot_use_and_drain_if_in_dict = move |result: &mut OverridableVec<String>, keyword: &str| {
             if let Some(list) = dict_ref_mut.remove(keyword) {
-                *result_list = split_double_dot(list)
+                **result = split_double_dot(list);
             }
             if let Some(first) = dict_ref_mut.remove(&format!("nc-{}", keyword)) {
-                *result_use = &first == "t"
+                result.no_child = &first == "t";
             }
         };
 
@@ -96,9 +145,9 @@ impl UserConfig {
 
         let mut result = Self::new_empty();
 
-        set_double_dot_use_and_drain_if_in_dict(&mut result.language_order, &mut result.no_child_language_order, "lang_ord");
-        set_double_dot_use_and_drain_if_in_dict(&mut result.resolution_order, &mut result.no_child_resolution_order, "res_ord");
-        set_double_dot_use_and_drain_if_in_dict(&mut result.format_order, &mut result.no_child_format_order, "form_ord");
+        set_double_dot_use_and_drain_if_in_dict(&mut result.language_order, "lang_ord");
+        set_double_dot_use_and_drain_if_in_dict(&mut result.resolution_order, "res_ord");
+        set_double_dot_use_and_drain_if_in_dict(&mut result.format_order, "form_ord");
 
         result
     }
@@ -118,9 +167,9 @@ impl UserConfig {
         };
 
         let mut result = HashMap::new();
-        result.insert("lang_ord".into(), add_double_dot(&self.language_order));
-        result.insert("res_ord".into(), add_double_dot(&self.resolution_order));
-        result.insert("form_ord".into(), add_double_dot(&self.format_order));
+        result.insert("lang_ord".into(), add_double_dot(&*self.language_order));
+        result.insert("res_ord".into(), add_double_dot(&*self.resolution_order));
+        result.insert("form_ord".into(), add_double_dot(&*self.format_order));
         result
     }
 
@@ -140,8 +189,8 @@ impl UserConfig {
     /// use kodionline::UserConfig;
     ///
     /// let mut source = UserConfig::new_empty();
-    /// source.language_order = vec!["fr".into(), "!nv.li-=d".into()];
-    /// source.resolution_order = vec!["la%li!".into()];
+    /// *source.language_order = vec!["fr".into(), "!nv.li-=d".into()];
+    /// *source.resolution_order = vec!["la%li!".into()];
     ///
     /// assert_eq!(
     ///     source,
@@ -186,8 +235,8 @@ impl UserConfig {
     /// use kodionline::UserConfig;
     ///
     /// let mut source = UserConfig::new_empty();
-    /// source.language_order = vec!["fr".into(), "!nv/li-=d".into()];
-    /// source.resolution_order = vec!["la%li!".into()];
+    /// *source.language_order = vec!["fr".into(), "!nv/li-=d".into()];
+    /// *source.resolution_order = vec!["la%li!".into()];
     ///
     /// assert_eq!(
     ///     UserConfig::new_from_optional_uri(Some(source.encode_to_uri())),
@@ -219,68 +268,58 @@ impl UserConfig {
     ///
     /// after merging, the element are deduplicated (implemented by a call to [`UserConfig::clean`])
     ///
-    /// if the no_child_* are set, then the value of ``Self`` are ignored for this list.
+    /// if the no_child value is set, then the value of ``Self`` are ignored for this list, and no_child is set to false in the returned value.
+    ///
     /// # Example
     ///
     /// ```
     /// use kodionline::UserConfig;
     ///
     /// let mut static_config = UserConfig::new_empty();
-    /// static_config.language_order = vec!["fr".into()];
-    /// static_config.resolution_order = vec!["1080p".into(), "720p".into()];
-    /// static_config.format_order = vec!["mp4".into(), "webm".into()];
+    /// *static_config.language_order = vec!["fr".into()];
+    /// *static_config.resolution_order = vec!["1080p".into(), "720p".into()];
+    /// *static_config.format_order = vec!["mp4".into(), "webm".into()];
     ///
     /// let mut dynamic_config = UserConfig::new_empty();
-    /// dynamic_config.language_order = vec!["en".into()];
-    /// dynamic_config.resolution_order = vec!["720p".into()];
-    /// dynamic_config.format_order = vec!["ogv".into()];
-    /// dynamic_config.no_child_format_order = true;
+    /// *dynamic_config.language_order = vec!["en".into()];
+    /// *dynamic_config.resolution_order = vec!["720p".into()];
+    /// *dynamic_config.format_order = vec!["ogv".into()];
+    /// dynamic_config.format_order.no_child = true;
     ///
     /// let result_config = static_config.add_config_prioritary(dynamic_config);
-    /// assert_eq!(result_config.language_order, vec!["en".to_string(), "fr".to_string()]);
-    /// assert_eq!(&result_config.resolution_order[0], "720p");
-    /// assert_eq!(&result_config.resolution_order[1], "1080p");
-    /// assert_eq!(result_config.format_order, vec!["ogv".to_string()]);
-    /// assert_eq!(result_config.no_child_format_order, false);
+    /// assert_eq!(*result_config.language_order, vec!["en".to_string(), "fr".to_string()]);
+    /// assert_eq!(&*result_config.resolution_order[0], "720p");
+    /// assert_eq!(&*result_config.resolution_order[1], "1080p");
+    /// assert_eq!(*result_config.format_order, vec!["ogv".to_string()]);
+    /// assert_eq!(result_config.format_order.no_child, false);
     /// ```
     pub fn add_config_prioritary(self, prio: Self) -> Self {
-        fn extend_dict_if_not_set<T>(to_extend: &mut Vec<T>, data: Vec<T>, not_extend: &mut bool) {
-            if *not_extend {
-                *not_extend = false;
-            } else {
-                to_extend.extend(data);
-            }
-        }
         let mut result = prio;
-        extend_dict_if_not_set(&mut result.language_order, self.language_order, &mut result.no_child_language_order);
-        extend_dict_if_not_set(&mut result.resolution_order, self.resolution_order, &mut result.no_child_resolution_order);
-        extend_dict_if_not_set(&mut result.format_order, self.format_order, &mut result.no_child_format_order);
-        result.clean()
+        result.language_order.add_child_and_reset_no_child(self.language_order);
+        result.resolution_order.add_child_and_reset_no_child(self.resolution_order);
+        result.format_order.add_child_and_reset_no_child(self.format_order);
+        result.clean();
+        result
     }
 
     /// remove duplicated
-    pub fn clean(self) -> Self {
+    pub fn clean(&mut self) {
         //TODO: search for a library to do this
-        fn remove_duplicate(mut list: Vec<String>) -> Vec<String> {
+        fn remove_duplicate(list: &mut Vec<String>) {
+            let mut new_list = Vec::new();
             let mut known_value: HashSet<String> = HashSet::new();
-            let mut result = Vec::new();
             for entry in list.drain(..) {
                 if known_value.contains(&entry) {
                     continue;
                 };
-                result.push(entry.clone());
+                new_list.push(entry.clone());
                 known_value.insert(entry);
             }
-            result
+            *list = new_list;
         };
 
-        Self {
-            language_order: remove_duplicate(self.language_order),
-            resolution_order: remove_duplicate(self.resolution_order),
-            format_order: remove_duplicate(self.format_order),
-            no_child_language_order: self.no_child_language_order,
-            no_child_resolution_order: self.no_child_resolution_order,
-            no_child_format_order: self.no_child_format_order,
-        }
+        remove_duplicate(&mut *self.language_order);
+        remove_duplicate(&mut *self.resolution_order);
+        remove_duplicate(&mut *self.format_order);
     }
 }

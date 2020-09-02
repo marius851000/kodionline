@@ -116,9 +116,9 @@ impl Kodi {
             result.push(input.clone());
         }
         for (add_list_key, values) in &[
-            ("language_order", &access.config.language_order),
-            ("resolution_order", &access.config.resolution_order),
-            ("format_order", &access.config.format_order),
+            ("language_order", &*access.config.language_order),
+            ("resolution_order", &*access.config.resolution_order),
+            ("format_order", &*access.config.format_order),
         ] {
             for v in *values {
                 result.push("-AL".into());
