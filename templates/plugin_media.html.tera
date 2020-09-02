@@ -41,7 +41,7 @@
 	<p><strong>avalaible languages</strong>:</p>
 	<ul class="language altlink">
 	{% for language in item.x_avalaible_languages %}
-		<li><a href="{{self_link_no_param_safe}}&c=lang_ord.{{language}}">{{language}}</a></li>
+		<li><a href="{{self_link_no_param_safe}}&c=lang_ord.{{language}}!nc-lang_ord.t">{{language}}</a></li>
 	{% endfor %}
 	</ul>
 {% endif %}

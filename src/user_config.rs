@@ -2,19 +2,52 @@ use percent_encoding::{percent_decode_str, utf8_percent_encode, AsciiSet, CONTRO
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
-#[derive(Default, Debug, Clone, Deserialize, Serialize, PartialEq, Hash, Eq)]
+//TODO: type for the pair of V, no_child_V (ensure to have the same Serde parsing way)
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Hash, Eq)]
 pub struct UserConfig {
     #[serde(default)]
     pub language_order: Vec<String>,
     #[serde(default)]
+    pub no_child_language_order: bool,
+    #[serde(default)]
     pub resolution_order: Vec<String>,
     #[serde(default)]
+    pub no_child_resolution_order: bool,
+    #[serde(default)]
     pub format_order: Vec<String>,
+    #[serde(default)]
+    pub no_child_format_order: bool,
+}
+
+impl Default for UserConfig {
+    fn default() -> Self {
+        Self {
+            language_order: vec!["en".into()],
+            no_child_language_order: false,
+            resolution_order: vec!["720p".into(), "480p".into(), "360p".into(), "1080p".into()],
+            no_child_resolution_order: false,
+            format_order: vec!["mp4".into(), "webm".into(), "ogv".into()],
+            no_child_format_order: false,
+        }
+    }
 }
 
 const URISPECIAL: &AsciiSet = &CONTROLS.add(b'%').add(b'!').add(b'.');
 
 impl UserConfig {
+    /// Create a new empty [`UserConfig`]
+    pub fn new_empty() -> Self {
+        Self {
+            language_order: Vec::new(),
+            no_child_language_order: false,
+            resolution_order: Vec::new(),
+            no_child_resolution_order: false,
+            format_order: Vec::new(),
+            no_child_format_order: false,
+        }
+    }
+
     /// create a user config based on an [`HashMap`] of [`String`] with a [`String`] keyword
     ///
     /// valid key are (see the [`UserConfig`] documentation for information on their meaning):
@@ -22,6 +55,7 @@ impl UserConfig {
     /// - ``res_ord`` : the order of resolution. They are separated with a ``:``  character.
     /// - ``form_ord`` : the order of format. Also use a ``:`` for separation.
     ///
+    /// if ``nc-<key>`` is equal to ``t`` (for ``true``), all the child that will be merged with lower priority with [`UserConfig::add_config_prioritary`] are ignored.
     /// all other keys are silently ignored
     ///
     /// # Example
@@ -33,32 +67,38 @@ impl UserConfig {
     /// let mut config = HashMap::new();
     /// config.insert("lang_ord".into(), "fr:en".into());
     /// config.insert("res_ord".into(), "1080p".into());
+    /// config.insert("nc-res_ord".into(), "t".into());
+    /// config.insert("nc-inv".into(), "t".into());
     /// config.insert("useless".into(), "none".into());
     ///
     /// let user_config = UserConfig::new_from_dict(config);
     ///
     /// assert_eq!(user_config.language_order, vec!["fr".to_string(), "en".to_string()]);
     /// assert_eq!(user_config.resolution_order, vec!["1080p".to_string()]);
+    /// assert_eq!(user_config.no_child_resolution_order, true);
     /// assert_eq!(user_config.format_order, Vec::<String>::new());
     /// ```
     pub fn new_from_dict(mut dict: HashMap<String, String>) -> Self {
+        let dict_ref_mut = &mut dict;
+
+        let mut set_double_dot_use_and_drain_if_in_dict = move |result_list: &mut Vec<String>, result_use: &mut bool, keyword: &str| {
+            if let Some(list) = dict_ref_mut.remove(keyword) {
+                *result_list = split_double_dot(list)
+            }
+            if let Some(first) = dict_ref_mut.remove(&format!("nc-{}", keyword)) {
+                *result_use = &first == "t"
+            }
+        };
+
         fn split_double_dot(source_value: String) -> Vec<String> {
             source_value.split(':').map(|v| v.to_string()).collect()
         }
 
-        let mut result = Self::default();
+        let mut result = Self::new_empty();
 
-        if let Some(language_order) = dict.remove("lang_ord") {
-            result.language_order = split_double_dot(language_order);
-        };
-
-        if let Some(resolution_order) = dict.remove("res_ord") {
-            result.resolution_order = split_double_dot(resolution_order);
-        };
-
-        if let Some(format_order) = dict.remove("form_ord") {
-            result.format_order = split_double_dot(format_order);
-        };
+        set_double_dot_use_and_drain_if_in_dict(&mut result.language_order, &mut result.no_child_language_order, "lang_ord");
+        set_double_dot_use_and_drain_if_in_dict(&mut result.resolution_order, &mut result.no_child_resolution_order, "res_ord");
+        set_double_dot_use_and_drain_if_in_dict(&mut result.format_order, &mut result.no_child_format_order, "form_ord");
 
         result
     }
@@ -99,12 +139,12 @@ impl UserConfig {
     /// ```
     /// use kodionline::UserConfig;
     ///
+    /// let mut source = UserConfig::new_empty();
+    /// source.language_order = vec!["fr".into(), "!nv.li-=d".into()];
+    /// source.resolution_order = vec!["la%li!".into()];
+    ///
     /// assert_eq!(
-    ///     UserConfig {
-    ///         language_order: vec!["fr".into(), "!nv.li-=d".into()],
-    ///         resolution_order: vec!["la%li!".into()],
-    ///         .. UserConfig::default()
-    ///     },
+    ///     source,
     ///     UserConfig::new_from_optional_uri(Some("lang_ord.fr:%21nv%2eli-=d!res_ord.la%25li%21".into()))
     /// );
     /// ```
@@ -130,7 +170,7 @@ impl UserConfig {
                 }
                 Self::new_from_dict(result_hashmap)
             }
-            None => Self::default(),
+            None => Self::new_empty(),
         }
     }
 
@@ -145,11 +185,9 @@ impl UserConfig {
     /// ```
     /// use kodionline::UserConfig;
     ///
-    /// let source = UserConfig {
-    ///     language_order: vec!["fr".into(), "!nv/li-=d".into()],
-    ///     resolution_order: vec!["la%li!".into()],
-    ///     .. UserConfig::default()
-    /// };
+    /// let mut source = UserConfig::new_empty();
+    /// source.language_order = vec!["fr".into(), "!nv/li-=d".into()];
+    /// source.resolution_order = vec!["la%li!".into()];
     ///
     /// assert_eq!(
     ///     UserConfig::new_from_optional_uri(Some(source.encode_to_uri())),
@@ -181,33 +219,42 @@ impl UserConfig {
     ///
     /// after merging, the element are deduplicated (implemented by a call to [`UserConfig::clean`])
     ///
+    /// if the no_child_* are set, then the value of ``Self`` are ignored for this list.
     /// # Example
     ///
     /// ```
     /// use kodionline::UserConfig;
     ///
-    /// let static_config = UserConfig {
-    ///     language_order: vec!["fr".into()],
-    ///     resolution_order: vec!["1080p".into(), "720p".into()],
-    ///     .. UserConfig::default()
-    /// };
+    /// let mut static_config = UserConfig::new_empty();
+    /// static_config.language_order = vec!["fr".into()];
+    /// static_config.resolution_order = vec!["1080p".into(), "720p".into()];
+    /// static_config.format_order = vec!["mp4".into(), "webm".into()];
     ///
-    /// let dynamic_config = UserConfig {
-    ///     language_order: vec!["en".into()],
-    ///     resolution_order: vec!["720p".into()],
-    ///      .. UserConfig::default()
-    /// };
+    /// let mut dynamic_config = UserConfig::new_empty();
+    /// dynamic_config.language_order = vec!["en".into()];
+    /// dynamic_config.resolution_order = vec!["720p".into()];
+    /// dynamic_config.format_order = vec!["ogv".into()];
+    /// dynamic_config.no_child_format_order = true;
     ///
     /// let result_config = static_config.add_config_prioritary(dynamic_config);
     /// assert_eq!(result_config.language_order, vec!["en".to_string(), "fr".to_string()]);
     /// assert_eq!(&result_config.resolution_order[0], "720p");
     /// assert_eq!(&result_config.resolution_order[1], "1080p");
+    /// assert_eq!(result_config.format_order, vec!["ogv".to_string()]);
+    /// assert_eq!(result_config.no_child_format_order, false);
     /// ```
     pub fn add_config_prioritary(self, prio: Self) -> Self {
+        fn extend_dict_if_not_set<T>(to_extend: &mut Vec<T>, data: Vec<T>, not_extend: &mut bool) {
+            if *not_extend {
+                *not_extend = false;
+            } else {
+                to_extend.extend(data);
+            }
+        }
         let mut result = prio;
-        result.language_order.extend(self.language_order);
-        result.resolution_order.extend(self.resolution_order);
-        result.format_order.extend(self.format_order);
+        extend_dict_if_not_set(&mut result.language_order, self.language_order, &mut result.no_child_language_order);
+        extend_dict_if_not_set(&mut result.resolution_order, self.resolution_order, &mut result.no_child_resolution_order);
+        extend_dict_if_not_set(&mut result.format_order, self.format_order, &mut result.no_child_format_order);
         result.clean()
     }
 
@@ -231,6 +278,9 @@ impl UserConfig {
             language_order: remove_duplicate(self.language_order),
             resolution_order: remove_duplicate(self.resolution_order),
             format_order: remove_duplicate(self.format_order),
+            no_child_language_order: self.no_child_language_order,
+            no_child_resolution_order: self.no_child_resolution_order,
+            no_child_format_order: self.no_child_format_order,
         }
     }
 }
