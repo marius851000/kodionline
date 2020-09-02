@@ -8,7 +8,7 @@
 		["jambmc", "plugin://plugin.audio.jambmc/?"]
 	],
 	"kodi_path": "~/.kodi",
-	"python_command": "python2"
+	"python_command": "python2",
 	"default_user_config": {
 		"language_order": ["fr", "en"],
 		"resolution_order": ["720p", "480p", "1080p", "360p"],
