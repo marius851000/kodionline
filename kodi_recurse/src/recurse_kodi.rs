@@ -1,6 +1,7 @@
 use crate::report::RecurseReport;
 use kodi_rust::data::{KodiResult, Page, SubContent};
 use kodi_rust::{Kodi, PathAccessData};
+use indicatif::ProgressBar;
 
 use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, Condvar, Mutex, RwLock};
 use std::thread;
@@ -44,7 +45,9 @@ struct SpawnNewThreadData {
     effective_task: Arc<Mutex<usize>>,
     condvar: Condvar,
     is_poisoned: RwLock<bool>,
-    errors: Mutex<Vec<RecurseReport>>,
+    errors: Mutex<Vec<RecurseReport>>, //TODO: custom type for more display configuration
+    progress_bar: Option<ProgressBar>,
+    progress: Mutex<(u64, u64)>, //finished, total task
 }
 
 impl SpawnNewThreadData {
@@ -90,6 +93,26 @@ impl SpawnNewThreadData {
         };
         errors_lock.push(err);
     }
+
+    fn increment_finished_task(&self) {
+        {
+            let mut progress = self.progress.lock().unwrap();
+            progress.0 += 1;
+        }
+        self.progress_bar.as_ref().map(|bar| bar.inc(1));
+    }
+
+    fn add_task(&self, to_add: u64) {
+        {
+            let mut progress = self.progress.lock().unwrap();
+            progress.1 += to_add;
+        }
+        self.progress_bar.as_ref().map(|bar| bar.inc_length(to_add));
+    }
+
+    fn finish(&self) {
+        self.progress_bar.as_ref().map(|bar| bar.finish());
+    }
 }
 
 fn kodi_recurse_inner_thread<
@@ -124,6 +147,7 @@ fn kodi_recurse_inner_thread<
                 RecurseReport::KodiCallError(access.clone(), Arc::new(err)),
                 keep_going,
             );
+            spawn_thread_data.increment_finished_task();
             spawn_thread_data.decrement_worker();
             return;
         }
@@ -158,6 +182,7 @@ fn kodi_recurse_inner_thread<
 
     if skip_this_element {
         spawn_thread_data.decrement_worker();
+        spawn_thread_data.increment_finished_task();
         have_decremented.store(true, Ordering::Relaxed);
         return;
     }
@@ -168,11 +193,15 @@ fn kodi_recurse_inner_thread<
         spawn_thread_data.add_error(error, keep_going);
     }
 
+    // the 3 following line shouldn't crash
     spawn_thread_data.decrement_worker();
+    spawn_thread_data.increment_finished_task();
     have_decremented.store(true, Ordering::Relaxed);
 
     //TODO: do not spawn more than enought active thread
     let mut threads: Vec<(JoinHandle<_>, Arc<AtomicBool>, PathAccessData)> = Vec::new();
+
+    spawn_thread_data.add_task(actual_page.sub_content.len() as u64);
 
     for sub_content in &actual_page.sub_content {
         let last_one_possible = spawn_thread_data.wait_to_spawn_child_then_increment_worker();
@@ -210,6 +239,7 @@ fn kodi_recurse_inner_thread<
             if let Err(_err) = handle.join() {
                 if child_have_decrement.fetch_or(false, Ordering::Relaxed) == false {
                     spawn_thread_data.decrement_worker();
+                    spawn_thread_data.increment_finished_task();
                 };
                 spawn_thread_data.add_error(
                     RecurseReport::ThreadPanicked(child_access_log, Some(access.clone())),
@@ -254,6 +284,7 @@ pub fn kodi_recurse_par<
     func: F,
     skip_this_and_children: C,
     keep_going: bool,
+    progress_bar: Option<ProgressBar>,
     thread_nb: usize,
 ) -> Vec<RecurseReport> {
     if thread_nb == 0 {
@@ -268,6 +299,8 @@ pub fn kodi_recurse_par<
         condvar: Condvar::new(),
         is_poisoned: RwLock::new(false),
         errors: Mutex::new(Vec::new()),
+        progress_bar,
+        progress: Mutex::new((0, 1))
     });
 
     let parent_data = match parent {
@@ -277,7 +310,10 @@ pub fn kodi_recurse_par<
                     KodiResult::Content(c) => c,
                     _ => todo!(), //TODO: RecurseReport value for this
                 },
-                Err(e) => return vec![RecurseReport::KodiCallError(parent_access, Arc::new(e))],
+                Err(e) => {
+                    spawn_thread_data.finish();
+                    return vec![RecurseReport::KodiCallError(parent_access, Arc::new(e))];
+                },
             },
             parent_access,
         )),
@@ -307,5 +343,6 @@ pub fn kodi_recurse_par<
         }
     }
 
+    spawn_thread_data.finish();
     return spawn_thread_data.errors.lock().unwrap().clone();
 }

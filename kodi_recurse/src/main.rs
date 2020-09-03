@@ -11,6 +11,8 @@ use std::fs::File;
 use std::process::ExitCode;
 use std::sync::Arc;
 
+use indicatif::ProgressBar;
+
 fn main() -> ExitCode {
     let app_m = App::new("kodi recurse")
         .arg(
@@ -177,9 +179,11 @@ fn main() -> ExitCode {
         setting.default_user_config.clone(),
     );
 
+    let no_catch_io = app_argument.is_present("no-catch-io");
+
     let kodi = {
         let mut k = Kodi::new(&setting.kodi_path, u64::MAX, 200);
-        k.set_catch_io(!app_argument.is_present("no-catch-io"));
+        k.set_catch_io(!no_catch_io);
         k
     };
 
@@ -190,7 +194,13 @@ fn main() -> ExitCode {
     let parent = parent_path
         .map(move |x| PathAccessData::new(x.to_string(), None, setting.default_user_config));
 
-    //TODO: with the new stuff
+    let progress_bar = if no_catch_io {
+        None
+    } else {
+        Some(ProgressBar::new(1))
+    };
+
+    //TODO: move the call to kodi_recurse out of here, just set the two variable to function
     let result = match app_m.subcommand() {
         ("check", Some(check_m)) => {
             //TODO: more control on verbosity
@@ -254,6 +264,7 @@ fn main() -> ExitCode {
                 },
                 |_, _| false,
                 keep_going,
+                progress_bar,
                 jobs,
             )
         }
@@ -271,6 +282,7 @@ fn main() -> ExitCode {
             r.pretty_print(&app_argument);
         }
     }
+    println!("there are {} errors", result.len());
 
     ExitCode::SUCCESS
 }
