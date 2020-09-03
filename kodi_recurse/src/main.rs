@@ -184,6 +184,7 @@ fn main() -> ExitCode {
     let kodi = {
         let mut k = Kodi::new(&setting.kodi_path, u64::MAX, 200);
         k.set_catch_io(!no_catch_io);
+        k.set_keep_alive(true);
         k
     };
 

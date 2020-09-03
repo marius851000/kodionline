@@ -135,6 +135,7 @@ impl Error for KodiCallError {
     }
 }
 
+#[derive(Debug)]
 pub struct KodiInterface {
     process: Option<Popen>,
     exit_hash: String,
@@ -261,26 +262,11 @@ impl Drop for KodiInterface {
 pub struct Kodi {
     kodi_config_path: String,
     cache: Mutex<TimedCache<PathAccessData, KodiResult>>,
+    cached_kodi_interface: Option<Mutex<Vec<KodiInterface>>>,
     python_command: String,
     cache_time: u64,
     cache_size: usize,
     catch_io: bool,
-}
-
-impl Clone for Kodi {
-    fn clone(&self) -> Self {
-        Self {
-            kodi_config_path: self.kodi_config_path.clone(),
-            cache: Mutex::new(TimedCache::with_lifespan_and_capacity(
-                self.cache_time,
-                self.cache_size,
-            )),
-            python_command: self.python_command.clone(),
-            cache_time: self.cache_time,
-            cache_size: self.cache_size,
-            catch_io: self.catch_io,
-        }
-    }
 }
 
 impl Kodi {
@@ -297,6 +283,7 @@ impl Kodi {
             cache: Mutex::new(TimedCache::with_lifespan_and_capacity(
                 cache_time, cache_size,
             )),
+            cached_kodi_interface: None,
             python_command: "python2".into(),
             cache_time,
             cache_size,
@@ -306,6 +293,14 @@ impl Kodi {
 
     pub fn set_python_command(&mut self, command: String) {
         self.python_command = command;
+    }
+
+    pub fn set_keep_alive(&mut self, keep_alive: bool) {
+        if keep_alive {
+            self.cached_kodi_interface = Some(Mutex::new(Vec::new()));
+        } else {
+            self.cached_kodi_interface = None;
+        };
     }
 
     pub fn set_catch_io(&mut self, catch_io: bool) {
@@ -336,6 +331,10 @@ impl Kodi {
         result
     }
 
+    fn create_interface(&self) -> KodiInterface {
+        KodiInterface::new_with_python(self.python_command.clone(), !self.catch_io)
+    }
+
     /// Get the data for a kodi addon path.
     ///
     /// It will use the kodi-dl library to do this, and will sandbox the call (not actually implemented)
@@ -355,6 +354,21 @@ impl Kodi {
             Err(err) => error!("the cache lock is poisoned: {:?}", err),
         };
 
+        let mut kodi_interface = if let Some(cacked_kodi_interface_mutex) = &self.cached_kodi_interface {
+            match cacked_kodi_interface_mutex.lock() {
+                Ok(mut cached_kodi_interface) => match cached_kodi_interface.pop() {
+                    Some(kodi_interface) => kodi_interface,
+                    None => self.create_interface(),
+                },
+                Err(err) => {
+                    error!("the cached kodi interface is poisoned: {:?}", err);
+                    self.create_interface()
+                }
+            }
+        } else {
+            self.create_interface()
+        };
+
         //TODO: make this use the sandbox
         let tempory_folder = match tempdir() {
             Ok(value) => value,
@@ -364,8 +378,6 @@ impl Kodi {
         let mut data_file: PathBuf = tempory_folder.path().into(); // don't use into_path() to don't persist it
         data_file.push("tmp.json");
 
-        let mut kodi_interface =
-            KodiInterface::new_with_python(self.python_command.clone(), !self.catch_io);
         kodi_interface.run(&self.get_commands(&data_file.to_string_lossy(), &access))?;
 
         let json_file = match File::open(&data_file) {
@@ -384,6 +396,13 @@ impl Kodi {
             }
             Err(err) => error!("the cache lock is poisoned: {:?}", err),
         };
+
+        self.cached_kodi_interface.as_ref().map(|x| {
+            match x.lock() {
+                Ok(mut cached_kodi_interface) => cached_kodi_interface.push(kodi_interface),
+                Err(err) => error!("the cached kodi interface is poisoned: {:?}", err),
+            };
+        });
 
         Ok(result)
     }
