@@ -205,17 +205,38 @@ fn main() -> ExitCode {
                     let page = info.get_page();
                     if let Some(resolved_listitem) = &page.resolved_listitem {
                         if check_media {
+                            // check if the resolved media exist
+                            //TODO: check other referenced content, and make look help look exactly what is wrong
                             if let Some(media_url) = &resolved_listitem.path {
-                                let resp = client.clone().get(media_url).send().unwrap();
-                                match resp.status() {
-                                    StatusCode::OK => (),
-                                    err_code => info.add_error_string(format!(
-                                        "getting the media at {:?} returned the error code {}",
-                                        media_url, err_code
-                                    )),
-                                };
+                                if media_url.starts_with("http://") | media_url.starts_with("http://")
+                                {
+                                    let resp = client.clone().get(media_url).send().unwrap();
+                                    match resp.status() {
+                                        StatusCode::OK => (),
+                                        err_code => info.add_error_string(format!(
+                                            "getting the distant media at {:?} returned the error code {}",
+                                            media_url, err_code
+                                        )),
+                                    };
+                                }
+                                if media_url.starts_with("/") {
+                                    if let Err(err) = File::open(media_url) {
+                                        info.add_error_string(format!(
+                                            "can't get the local media at {:?}: {:?}",
+                                            media_url, err
+                                        ));
+                                    };
+                                } else {
+                                    info.add_error_string(format!(
+                                        "can't determine how to check the existance of {:?}",
+                                        media_url
+                                    ));
+                                }
                             };
                         };
+                    };
+                    // check that the IsPlatable flag is valid
+                    if page.resolved_listitem.is_some() {
                         if let Some(sub_content_from_parent) = info.sub_content_from_parent {
                             if !sub_content_from_parent.listitem.is_playable() {
                                 info.add_error_string("the data is not marked as playable by one of it parent, but it contain a resolved listitem".to_string());
