@@ -73,9 +73,10 @@ impl RecurseReport {
     pub fn get_summary_text(&self) -> String {
         match self {
             RecurseReport::CalledReport(_, _, message) => message.clone(),
-            RecurseReport::KodiCallError(_, kodi_error) => {
-                format!("can't get data from a plugin:\n{}", kodi_error)
-            } //TODO: log with reason or something like that once finished, and custom display (or custom display for website ?)
+            RecurseReport::KodiCallError(_, kodi_error) => match kodi_error.as_ref() {
+                KodiError::CallError(e) => format!("can't get data from a plugin (when trying to call python code): {}", e),
+                e => format!("can't get data from a plugin: {}", e),
+            },
             RecurseReport::ThreadPanicked(_, _) => "a thread panicked unexpectingly".into(),
         }
     }
