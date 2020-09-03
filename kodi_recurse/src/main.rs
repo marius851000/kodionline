@@ -130,8 +130,8 @@ fn main() -> ExitCode {
             if app_m.is_present("keep-going") {
                 b.insert("keep-going".to_string());
             };
-            if app_m.is_present("catch-io") {
-                b.insert("keep-going".to_string());
+            if app_m.is_present("no-catch-io") {
+                b.insert("no-catch-io".to_string());
             };
             b
         },
@@ -208,7 +208,8 @@ fn main() -> ExitCode {
                             // check if the resolved media exist
                             //TODO: check other referenced content, and make look help look exactly what is wrong
                             if let Some(media_url) = &resolved_listitem.path {
-                                if media_url.starts_with("http://") | media_url.starts_with("http://")
+                                if media_url.starts_with("http://")
+                                    | media_url.starts_with("http://")
                                 {
                                     let resp = client.clone().get(media_url).send().unwrap();
                                     match resp.status() {

@@ -80,15 +80,23 @@ impl RecurseReport {
         }
     }
 
+    pub fn is_internal_error(&self) -> bool {
+        // assume true by defaumt
+        match self {
+            Self::CalledReport(_, _, _) => false,
+            Self::KodiCallError(_, call_error) => match call_error.as_ref() {
+                KodiError::CallError(e) => !e.is_python_error(),
+                _ => true,
+            },
+            _ => true,
+        }
+    }
     pub fn get_tip(&self, app_argument: &AppArgument) -> Vec<String> {
         let mut tips = Vec::new();
 
-        match self {
-            RecurseReport::ThreadPanicked(_, _) => {
-                tips.push("this is likely an issue in the kodionline program".to_string())
-            }
-            _ => (),
-        };
+        if self.is_internal_error() {
+            tips.push("this is likely an issue in the kodionline program".to_string())
+        }
 
         //TODO: parent
 
@@ -172,20 +180,28 @@ impl RecurseReport {
     pub fn get_logs(&self) -> Vec<(String, Vec<String>)> {
         let mut result = Vec::new();
         match self {
-            Self::KodiCallError(_, e) => match &**e {
-                KodiError::CallError(_, maybe_log) => {
-                    if let Some(log) = maybe_log {
-                        let collected: Vec<&str> = log.split("\n").collect::<Vec<&str>>();
+            Self::KodiCallError(_, err) => {
+                if let KodiError::CallError(e) = err.as_ref() {
+                    if let Some(log) = e.get_log() {
+                        let mut collected: Vec<&str> = log.split("\n").collect::<Vec<&str>>();
                         let mut logs = Vec::new();
-                        let mut number_of_log_line = 0;
                         let mut all_line_included = true;
-                        for count in 1..21 {
-                            if let Some(element_number) = collected.len().checked_sub(count) {
-                                logs.push(collected[element_number].to_string());
-                                number_of_log_line += 1;
-                            } else {
-                                all_line_included = false
-                            };
+
+                        while let Some(last) = collected.last() {
+                            if last != &"" {
+                                break;
+                            }
+                            collected.remove(collected.len() - 1);
+                        }
+
+                        while collected.len() > 20 {
+                            collected.remove(0);
+                            all_line_included = false;
+                        }
+
+                        let number_of_log_line = collected.len();
+                        for l in &collected {
+                            logs.push(l.to_string());
                         }
                         let message = if logs.is_empty() {
                             "the addon had no log".into()
@@ -203,8 +219,7 @@ impl RecurseReport {
                         result.push((message, logs));
                     }
                 }
-                _ => (),
-            },
+            }
             _ => (),
         };
         result

@@ -2,10 +2,16 @@ use std::error::Error;
 use std::fmt;
 use std::fs::File;
 use std::io;
+use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use subprocess::{Exec, ExitStatus, Redirection};
+use rand::distributions::Uniform;
+use rand::{thread_rng, Rng};
+
+use shell_escape::escape;
+use std::borrow::Cow;
+use subprocess::{Exec, ExitStatus, Popen, PopenError, Redirection};
 
 use tempfile::tempdir;
 
@@ -19,7 +25,7 @@ use crate::{data::KodiResult, PathAccessData};
 #[derive(Debug)]
 /// represent error that can happen while handling [`Kodi`]
 pub enum KodiError {
-    CallError(ExitStatus, Option<String>),
+    CallError(KodiCallError),
     InvalidGeneratedCommand,
     CantCreateTemporyDir(io::Error),
     CantOpenResultFile(io::Error),
@@ -29,11 +35,7 @@ pub enum KodiError {
 impl fmt::Display for KodiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::CallError(status, _) => write!(
-                f,
-                "python, when calling the kodi addon, returned with the status code {:?}.",
-                status
-            ),
+            Self::CallError(_) => write!(f, "failed to call python code"),
             Self::InvalidGeneratedCommand => {
                 write!(f, "internal error: the generated command is invalid")
             }
@@ -54,7 +56,201 @@ impl Error for KodiError {
             Self::CantCreateTemporyDir(err) => Some(err),
             Self::CantOpenResultFile(err) => Some(err),
             Self::CantParseResultFile(err) => Some(err),
+            Self::CallError(err) => Some(err),
             _ => None,
+        }
+    }
+}
+
+impl From<KodiCallError> for KodiError {
+    fn from(k: KodiCallError) -> Self {
+        Self::CallError(k)
+    }
+}
+
+#[derive(Debug)]
+pub enum KodiCallError {
+    NonZeroExit(String, ExitStatus),
+    CantGetStdin(),
+    CantWriteStdin(io::Error),
+    CantGetStdout(String),
+    CantReadStdout(String, io::Error),
+    CreateProcessError(PopenError),
+}
+
+impl KodiCallError {
+    pub fn is_python_error(&self) -> bool {
+        match self {
+            Self::NonZeroExit(_, _) => true,
+            _ => false,
+        }
+    }
+
+    pub fn get_log(&self) -> Option<&str> {
+        match self {
+            Self::NonZeroExit(log, _) => Some(&log),
+            Self::CantGetStdout(log) => Some(&log),
+            Self::CantReadStdout(log, _) => Some(&log),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for KodiCallError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NonZeroExit(_, exit_code) => write!(
+                f,
+                "the exit code of python is {:?} (expected normal exit code 0). Python code likely crashed.", exit_code //TODO: maybe better display of the exit code
+            ),
+            Self::CantGetStdin() => write!(
+                f,
+                "impossible to get an handle to the stdin of the invoked process"
+            ),
+            Self::CantWriteStdin(_) => write!(
+                f,
+                "impossible to write to the invoked command stdin (input)"
+            ),
+            Self::CantGetStdout(_) => write!(
+                f,
+                "impossible to get an handle to the stdout of the invoked process"
+            ),
+            Self::CantReadStdout(_, _) => write!(
+                f,
+                "impossible to read to the invoked command stdout (output)"
+            ),
+            Self::CreateProcessError(_) => write!(f, "impossible to spawn the child process"),
+        }
+    }
+}
+
+impl Error for KodiCallError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::CantWriteStdin(err) => Some(err),
+            Self::CantReadStdout(_, err) => Some(err),
+            Self::CreateProcessError(err) => Some(err),
+            _ => None,
+        }
+    }
+}
+
+pub struct KodiInterface {
+    process: Option<Popen>,
+    exit_hash: String,
+    python_command: String,
+    redirect: bool,
+}
+
+impl KodiInterface {
+    fn new_with_python(python_command: String, redirect: bool) -> KodiInterface {
+        let exit_hash = {
+            let mut rng = thread_rng();
+            let valid_character_generator = Uniform::new(65, 122);
+            let mut h = String::from("end of call (with check) :");
+            for _ in 0..100 {
+                h.push(rng.sample(valid_character_generator).into());
+            }
+            h
+        };
+
+        KodiInterface {
+            process: None,
+            exit_hash,
+            redirect,
+            python_command,
+        }
+    }
+
+    //TODO: multiple call
+    fn run(&mut self, command: &Vec<String>) -> Result<String, KodiCallError> {
+        fn invoke_process(exit_hash: &str, python_command: &str) -> Result<Popen, KodiCallError> {
+            Exec::cmd(python_command)
+                .arg("kodi_interface.py")
+                .arg(exit_hash)
+                .stdin(Redirection::Pipe)
+                .stdout(Redirection::Pipe)
+                .stderr(Redirection::Merge)
+                .popen()
+                .map_err(|err| KodiCallError::CreateProcessError(err))
+        };
+
+        match &mut self.process {
+            None => {
+                let popen = invoke_process(&self.exit_hash, &self.python_command)?;
+                self.process = Some(popen);
+            }
+            Some(pro) => {
+                if pro.poll().is_some() {
+                    let popen = invoke_process(&self.exit_hash, &self.python_command)?;
+                    self.process = Some(popen);
+                }
+            }
+        };
+
+        let process: &mut Popen = self.process.as_mut().unwrap();
+
+        let command_escaped = command
+            .iter()
+            .map(|x| escape(Cow::from(x)).to_string())
+            .collect::<Vec<String>>()
+            .join(" ");
+        let mut stdin = process
+            .stdin
+            .as_ref()
+            .ok_or(KodiCallError::CantGetStdin())?;
+        stdin
+            .write_all(&[b'r', b'u', b'n', b' '])
+            .map_err(|err| KodiCallError::CantWriteStdin(err))?;
+        stdin
+            .write_all(command_escaped.as_bytes())
+            .map_err(|err| KodiCallError::CantWriteStdin(err))?;
+        stdin
+            .write_all(&[b'\n'])
+            .map_err(|err| KodiCallError::CantWriteStdin(err))?;
+        let mut actual_line = Vec::new();
+        let mut output_string = String::new();
+        let mut buf = [0];
+        loop {
+            let mut stdout = match process.stdout.as_ref() {
+                Some(v) => v,
+                None => return Err(KodiCallError::CantGetStdout(output_string)),
+            };
+            match stdout.read(&mut buf) {
+                Ok(v) => v,
+                Err(err) => return Err(KodiCallError::CantReadStdout(output_string, err)),
+            };
+            if buf[0] == b'\n' {
+                let line_string = String::from_utf8_lossy(&actual_line); //TODO: display as the character is outputted
+                if line_string == self.exit_hash {
+                    break;
+                };
+                if self.redirect {
+                    println!("{}", line_string);
+                };
+                output_string.push_str(&line_string);
+                output_string.push('\n');
+                actual_line = Vec::new();
+            } else {
+                actual_line.push(buf[0]);
+            }
+
+            if let Some(exit_code) = process.poll() {
+                match exit_code {
+                    ExitStatus::Exited(0) => break,
+                    exit_code => return Err(KodiCallError::NonZeroExit(output_string, exit_code)),
+                }
+            }
+        }
+
+        return Ok(output_string);
+    }
+}
+
+impl Drop for KodiInterface {
+    fn drop(&mut self) {
+        if let Some(process) = &mut self.process {
+            let _ = process.terminate();
         }
     }
 }
@@ -118,8 +314,6 @@ impl Kodi {
 
     fn get_commands(&self, tempory_file: &str, access: &PathAccessData) -> Vec<String> {
         let mut result = vec![
-            self.python_command.clone(),
-            "kodi_interface.py".into(),
             self.kodi_config_path.clone(),
             access.path.clone(),
             tempory_file.into(),
@@ -170,42 +364,9 @@ impl Kodi {
         let mut data_file: PathBuf = tempory_folder.path().into(); // don't use into_path() to don't persist it
         data_file.push("tmp.json");
 
-        let command_argument_vec = self.get_commands(&data_file.to_string_lossy(), &access);
-        let mut command_argument = command_argument_vec.iter();
-
-        //TODO: clear useless environment variable
-        let first_command = match command_argument.next() {
-            Some(value) => value,
-            None => return Err(KodiError::InvalidGeneratedCommand),
-        };
-        let mut callable_command = Exec::cmd(first_command);
-
-        for argument in command_argument {
-            callable_command = callable_command.arg(argument)
-        }
-
-        if self.catch_io {
-            let capture_data = callable_command
-                .stdout(Redirection::Pipe)
-                .stderr(Redirection::Merge)
-                .capture()
-                .unwrap();
-            match capture_data.exit_status {
-                ExitStatus::Exited(0) => (),
-                other => {
-                    return Err(KodiError::CallError(
-                        other,
-                        Some(String::from_utf8_lossy(&capture_data.stdout).to_string()),
-                    ))
-                }
-            };
-        } else {
-            let output_code = callable_command.join().unwrap();
-            match output_code {
-                ExitStatus::Exited(0) => (),
-                other => return Err(KodiError::CallError(other, None)),
-            };
-        }
+        let mut kodi_interface =
+            KodiInterface::new_with_python(self.python_command.clone(), !self.catch_io);
+        kodi_interface.run(&self.get_commands(&data_file.to_string_lossy(), &access))?;
 
         let json_file = match File::open(&data_file) {
             Ok(value) => value,
