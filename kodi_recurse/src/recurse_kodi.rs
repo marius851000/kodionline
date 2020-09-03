@@ -1,6 +1,6 @@
+use crate::report::RecurseReport;
 use kodi_rust::data::{KodiResult, Page, SubContent};
 use kodi_rust::{Kodi, PathAccessData};
-use crate::report::RecurseReport;
 
 use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, Condvar, Mutex, RwLock};
 use std::thread;
@@ -211,8 +211,10 @@ fn kodi_recurse_inner_thread<
                 if child_have_decrement.fetch_or(false, Ordering::Relaxed) == false {
                     spawn_thread_data.decrement_worker();
                 };
-                spawn_thread_data
-                    .add_error(RecurseReport::ThreadPanicked(child_access_log, Some(access.clone())), keep_going);
+                spawn_thread_data.add_error(
+                    RecurseReport::ThreadPanicked(child_access_log, Some(access.clone())),
+                    keep_going,
+                );
             }
         } else {
             threads.push((handle, child_have_decrement, child_access_log));
@@ -230,8 +232,10 @@ fn kodi_recurse_inner_thread<
             if thread.1.fetch_or(false, Ordering::Relaxed) == false {
                 spawn_thread_data.decrement_worker();
             };
-            spawn_thread_data
-                .add_error(RecurseReport::ThreadPanicked(thread.2, Some(access.clone())), keep_going);
+            spawn_thread_data.add_error(
+                RecurseReport::ThreadPanicked(thread.2, Some(access.clone())),
+                keep_going,
+            );
         }
     }
 }
@@ -245,11 +249,12 @@ pub fn kodi_recurse_par<
 >(
     kodi: Kodi,
     access: PathAccessData,
+    parent: Option<PathAccessData>,
     data: T,
     func: F,
     skip_this_and_children: C,
-    thread_nb: usize,
     keep_going: bool,
+    thread_nb: usize,
 ) -> Vec<RecurseReport> {
     if thread_nb == 0 {
         panic!()
@@ -265,6 +270,17 @@ pub fn kodi_recurse_par<
         errors: Mutex::new(Vec::new()),
     });
 
+    let parent_data = match parent {
+        Some(parent_access) => Some((match kodi.invoke_sandbox(&parent_access) {
+            Ok(r) => match r {
+                KodiResult::Content(c) => c,
+                _ => todo!(), //TODO: RecurseReport value for this
+            },
+            Err(e) => return vec![RecurseReport::KodiCallError(parent_access, Arc::new(e))],
+        }, parent_access)),
+        None => None,
+    };
+
     let spawn_thread_data_cloned = spawn_thread_data.clone();
     let access_cloned = access.clone();
     let original_thread = thread::spawn(move || {
@@ -272,7 +288,7 @@ pub fn kodi_recurse_par<
             kodi,
             func,
             skip_this_and_children,
-            None,
+            parent_data,
             access_cloned,
             data,
             spawn_thread_data_cloned,

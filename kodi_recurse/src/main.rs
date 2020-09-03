@@ -2,11 +2,14 @@
 //TODO: use env_logger
 use clap::{App, Arg, SubCommand};
 use kodi_recurse::kodi_recurse_par;
+use kodi_recurse::AppArgument;
 use kodi_rust::{Kodi, PathAccessData, Setting};
 use reqwest::{blocking::ClientBuilder, StatusCode};
+
 use std::fs::File;
 use std::process::ExitCode;
 use std::sync::Arc;
+use std::collections::{HashMap, HashSet};
 
 fn main() -> ExitCode {
     let app_m = App::new("kodi recurse")
@@ -18,9 +21,9 @@ fn main() -> ExitCode {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("kodi_path")
+            Arg::with_name("kodi-path")
                 .short("r")
-                .long("kodi_path")
+                .long("kodi-path")
                 .help("path to kodi root directory")
                 .takes_value(true),
         )
@@ -33,6 +36,13 @@ fn main() -> ExitCode {
                 .required(true),
         )
         .arg(
+            Arg::with_name("parent-path")
+                .short("P")
+                .long("parent-path")
+                .help("the path of the parent in the path")
+                .takes_value(true)
+        )
+        .arg(
             Arg::with_name("jobs")
                 .short("j")
                 .long("jobs")
@@ -41,15 +51,15 @@ fn main() -> ExitCode {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("keep_going")
+            Arg::with_name("keep-going")
                 .short("k")
-                .long("keep_going")
+                .long("keep-going")
                 .help("still continue the recursive browsing even when an error occurred"),
         )
         .subcommand(
             SubCommand::with_name("check")
                 .about("check the validity of the given kodi path and their child")
-                .arg(Arg::with_name("check_media").long("check_media").help(
+                .arg(Arg::with_name("check-media").long("check-media").help(
                     "check the media in resolved listitem. Will produce more network request.",
                 )),
         )
@@ -78,11 +88,59 @@ fn main() -> ExitCode {
         None => Setting::default(),
     };
 
-    if let Some(kodi_path) = app_m.value_of("kodi_path") {
+    let app_argument = AppArgument {
+        command_name: "kodi_recurse".into(),
+        args_order: vec!["config", "kodi_path", "path", "jobs", "keep_going"],
+        short_version: {
+            let mut s = HashMap::new();
+            s.insert("config", "c");
+            s.insert("kodi-path", "r");
+            s.insert("path", "p");
+            s.insert("parent-path", "P");
+            s.insert("jobs", "j");
+            s.insert("keep-going", "k");
+            s
+        },
+        args: {
+            let mut a = HashMap::new();
+            for parameter in &["config", "kodi-path", "path", "parent-path", "jobs"] {
+                if let Some(value) = app_m.value_of(parameter) {
+                    a.insert(parameter.to_string(), value.to_string());
+                };
+            };
+            a
+        },
+        bool_set: {
+            let mut b = HashSet::new();
+            if app_m.is_present("keep-going") {
+                b.insert("keep-going".to_string());
+            };
+            b
+        },
+        sub_command: match app_m.subcommand() {
+            ("check", Some(check_m)) => Some(Box::new(AppArgument {
+                command_name: "check".into(),
+                args_order: vec!["check-media"],
+                short_version: HashMap::new(),
+                bool_set: HashSet::new(),
+                args: {
+                    let mut a = HashMap::new();
+                    if let Some(check_media) = check_m.value_of("check-media") {
+                        a.insert("check-media".to_string(), check_media.to_string());
+                    };
+                    a
+                },
+                sub_command: None
+            })),
+            _ => None,
+        },
+    };
+
+    if let Some(kodi_path) = app_argument.value_of("kodi-path") {
         setting.kodi_path = kodi_path.to_string();
     };
 
-    let jobs = match app_m.value_of("jobs") {
+    let jobs = match app_argument.value_of("jobs") {
         Some(jobs_str) => match jobs_str.parse() {
             Ok(v) => v,
             Err(_) => {
@@ -93,22 +151,28 @@ fn main() -> ExitCode {
         None => 1,
     };
 
-    let plugin_path = app_m.value_of("path").unwrap();
+    let plugin_path = app_argument.value_of("path").unwrap();
 
-    let access = PathAccessData::new(plugin_path.to_string(), None, setting.default_user_config);
+    let access = PathAccessData::new(plugin_path.to_string(), None, setting.default_user_config.clone());
 
     let kodi = Kodi::new(&setting.kodi_path, u64::MAX, 200);
 
-    let keep_going = app_m.is_present("keep_going");
+    let keep_going = app_argument.is_present("keep-going");
 
+    let parent_path = app_argument.value_of("parent-path");
+
+    let parent = parent_path.map(move |x| PathAccessData::new(x.to_string(), None, setting.default_user_config));
+    
+    //TODO: with the new stuff
     let result = match app_m.subcommand() {
         ("check", Some(check_m)) => {
-            //TODO: more log
-            let check_media = check_m.is_present("check_media");
+            //TODO: more control on verbosity
+            let check_media = check_m.is_present("check-media");
             let client = Arc::new(ClientBuilder::new().referer(false).build().unwrap());
             kodi_recurse_par::<(), _, _>(
                 kodi,
                 access,
+                parent,
                 (),
                 move |info, _| {
                     let page = info.get_page();
@@ -140,8 +204,8 @@ fn main() -> ExitCode {
                     ()
                 },
                 |_, _| false,
-                jobs,
                 keep_going,
+                jobs,
             )
         }
         _ => {
@@ -154,7 +218,7 @@ fn main() -> ExitCode {
     if result.len() > 0 {
         println!("error happended while recursing:");
         for r in &result {
-            r.pretty_print();
+            r.pretty_print(&app_argument);
         }
     }
 

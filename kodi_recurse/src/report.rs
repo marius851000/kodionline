@@ -1,6 +1,8 @@
+use console::{Style, style};
 use kodi_rust::{KodiError, PathAccessData};
-use console::Style;
 use std::sync::Arc;
+use crate::AppArgument;
+
 //use shell_escape::escape;
 
 static NEWLINESPACE: &'static str = "  ";
@@ -72,20 +74,36 @@ impl RecurseReport {
         match self {
             RecurseReport::CalledReport(_, _, message) => message.clone(),
             RecurseReport::KodiCallError(_, kodi_error) => {
-                format!("can't get plugin data:\n{}", kodi_error)
-            } //TODO: log with reason or something like that once finished
+                format!("can't get data from a plugin:\n{}", kodi_error)
+            } //TODO: log with reason or something like that once finished, and custom display (or custom display for website ?)
             RecurseReport::ThreadPanicked(_, _) => "a thread panicked unexpectingly".into(),
         }
     }
 
-    pub fn get_tip(&self) -> Vec<String> {
+    pub fn get_tip(&self, app_argument: &AppArgument) -> Vec<String> {
+        let mut tips = Vec::new();
+
         match self {
-            RecurseReport::CalledReport(_, _, _) => Vec::new(),
-            RecurseReport::KodiCallError(_, _) => Vec::new(),
-            RecurseReport::ThreadPanicked(_, _) => {
-                vec!["this is likely an issue in the kodionline program".into()]
-            }
-        }
+            RecurseReport::ThreadPanicked(_, _) => tips.push("this is likely an issue in the kodionline program".to_string()),
+            _ => ()
+        };
+
+        //TODO: parent
+
+        // try to get the command to reproduce the error
+        let (child, parent) = self.get_reproduce_access();
+        let mut new_command = app_argument.clone();
+        new_command.bool_set.remove("keep-going");
+        new_command.args.insert("jobs".to_string(), "1".to_string());
+        new_command.args.insert("path".to_string(), child.path.clone());
+        if let Some(parent) = parent {
+            new_command.args.insert("parent-path".to_string(), parent.path.clone());
+        } else {
+            new_command.args.remove("parent-path");
+        };
+        tips.push(format!("to reproduce this error, run : {}", style(new_command.get_command_safe()).blue() ));
+
+        tips
     }
 
     pub fn get_reproduce_access(&self) -> (PathAccessData, Option<PathAccessData>) {
@@ -97,7 +115,7 @@ impl RecurseReport {
         }
     }
 
-    pub fn get_text_to_print(&self) -> String {
+    pub fn get_text_to_print(&self, app_argument: &AppArgument) -> String {
         fn add_new_line(
             tag: &str,
             tag_style: &Style,
@@ -117,7 +135,7 @@ impl RecurseReport {
         let mut string_lines = Vec::new();
         string_lines.push(format!("{}", self.get_summary_formatted()));
 
-        for tip in self.get_tip() {
+        for tip in self.get_tip(app_argument) {
             string_lines.push(add_new_line(
                 "tip",
                 &Style::new().blue(),
@@ -129,7 +147,7 @@ impl RecurseReport {
         string_lines.join("\n")
     }
 
-    pub fn pretty_print(&self) {
-        println!("{}", self.get_text_to_print());
+    pub fn pretty_print(&self, app_argument: &AppArgument) {
+        println!("{}", self.get_text_to_print(app_argument));
     }
 }
