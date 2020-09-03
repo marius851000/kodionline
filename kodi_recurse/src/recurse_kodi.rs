@@ -271,13 +271,16 @@ pub fn kodi_recurse_par<
     });
 
     let parent_data = match parent {
-        Some(parent_access) => Some((match kodi.invoke_sandbox(&parent_access) {
-            Ok(r) => match r {
-                KodiResult::Content(c) => c,
-                _ => todo!(), //TODO: RecurseReport value for this
+        Some(parent_access) => Some((
+            match kodi.invoke_sandbox(&parent_access) {
+                Ok(r) => match r {
+                    KodiResult::Content(c) => c,
+                    _ => todo!(), //TODO: RecurseReport value for this
+                },
+                Err(e) => return vec![RecurseReport::KodiCallError(parent_access, Arc::new(e))],
             },
-            Err(e) => return vec![RecurseReport::KodiCallError(parent_access, Arc::new(e))],
-        }, parent_access)),
+            parent_access,
+        )),
         None => None,
     };
 

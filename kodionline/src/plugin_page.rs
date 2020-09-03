@@ -1,3 +1,4 @@
+use crate::error_page::generate_error_page;
 use kodi_rust::{
     data::{KodiResult, ListItem, SubContent},
     format_to_string, get_art_link_subcontent, get_media_link_resolved_url,
@@ -5,7 +6,6 @@ use kodi_rust::{
     input::decode_input,
     Kodi, PathAccessData, PathAccessFormat, Setting, UserConfig,
 };
-use crate::error_page::generate_error_page;
 
 use log::error;
 use rocket::{http::RawStr, State};
@@ -99,8 +99,11 @@ pub fn render_plugin(
         v
     };
 
-    let parent_access =
-        PathAccessData::try_create_from_url(parent_path.clone(), parent_input.map(|x| x.as_str()), final_config);
+    let parent_access = PathAccessData::try_create_from_url(
+        parent_path.clone(),
+        parent_input.map(|x| x.as_str()),
+        final_config,
+    );
 
     let subcontent_from_parent = if let Some(ref parent_access_internal) = parent_access {
         get_sub_content_from_parent(&kodi, &parent_access_internal, &current_access.path)

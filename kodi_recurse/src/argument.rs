@@ -109,5 +109,8 @@ fn test_app_argument() {
         })),
     };
 
-    assert_eq!(app.get_command_safe(), "hello -t \'hello, world\' --bool --another \'tes\"t\' sub_command --sub arg"); //may be subject to change
+    assert_eq!(
+        app.get_command_safe(),
+        "hello -t \'hello, world\' --bool --another \'tes\"t\' sub_command --sub arg"
+    ); //may be subject to change
 }

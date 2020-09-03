@@ -1,7 +1,7 @@
+use kodi_recurse::AppArgument;
 use kodi_recurse::{RecurseReport, ReportKind};
 use kodi_rust::{PathAccessData, UserConfig};
 use std::collections::{HashMap, HashSet};
-use kodi_recurse::AppArgument;
 
 fn main() {
     println!("displaying the various report kind:");
@@ -23,7 +23,7 @@ fn main() {
 
     let argument = AppArgument {
         command_name: "binary_name".into(), //TODO: a bit more of stuff to show this
-        .. AppArgument::default()
+        ..AppArgument::default()
     };
 
     message.pretty_print(&argument);

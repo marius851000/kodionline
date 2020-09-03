@@ -6,10 +6,10 @@ use kodi_recurse::AppArgument;
 use kodi_rust::{Kodi, PathAccessData, Setting};
 use reqwest::{blocking::ClientBuilder, StatusCode};
 
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::process::ExitCode;
 use std::sync::Arc;
-use std::collections::{HashMap, HashSet};
 
 fn main() -> ExitCode {
     let app_m = App::new("kodi recurse")
@@ -40,7 +40,7 @@ fn main() -> ExitCode {
                 .short("P")
                 .long("parent-path")
                 .help("the path of the parent in the path")
-                .takes_value(true)
+                .takes_value(true),
         )
         .arg(
             Arg::with_name("jobs")
@@ -55,6 +55,12 @@ fn main() -> ExitCode {
                 .short("k")
                 .long("keep-going")
                 .help("still continue the recursive browsing even when an error occurred"),
+        )
+        .arg(
+            Arg::with_name("no-catch-io")
+                .short("n")
+                .long("no-catch-io")
+                .help("do not catch the output of python code. It will log the python output as it is executed, rather than being displayed only after a crash")
         )
         .subcommand(
             SubCommand::with_name("check")
@@ -90,7 +96,15 @@ fn main() -> ExitCode {
 
     let app_argument = AppArgument {
         command_name: "kodi_recurse".into(),
-        args_order: vec!["config", "kodi_path", "path", "jobs", "keep_going"],
+        args_order: vec![
+            "config",
+            "kodi_path",
+            "path",
+            "jobs",
+            "parent-path",
+            "no-catch-io",
+            "keep_going",
+        ],
         short_version: {
             let mut s = HashMap::new();
             s.insert("config", "c");
@@ -99,6 +113,7 @@ fn main() -> ExitCode {
             s.insert("parent-path", "P");
             s.insert("jobs", "j");
             s.insert("keep-going", "k");
+            s.insert("no-catch-io", "n");
             s
         },
         args: {
@@ -107,12 +122,15 @@ fn main() -> ExitCode {
                 if let Some(value) = app_m.value_of(parameter) {
                     a.insert(parameter.to_string(), value.to_string());
                 };
-            };
+            }
             a
         },
         bool_set: {
             let mut b = HashSet::new();
             if app_m.is_present("keep-going") {
+                b.insert("keep-going".to_string());
+            };
+            if app_m.is_present("catch-io") {
                 b.insert("keep-going".to_string());
             };
             b
@@ -130,7 +148,7 @@ fn main() -> ExitCode {
                     };
                     a
                 },
-                sub_command: None
+                sub_command: None,
             })),
             _ => None,
         },
@@ -153,16 +171,25 @@ fn main() -> ExitCode {
 
     let plugin_path = app_argument.value_of("path").unwrap();
 
-    let access = PathAccessData::new(plugin_path.to_string(), None, setting.default_user_config.clone());
+    let access = PathAccessData::new(
+        plugin_path.to_string(),
+        None,
+        setting.default_user_config.clone(),
+    );
 
-    let kodi = Kodi::new(&setting.kodi_path, u64::MAX, 200);
+    let kodi = {
+        let mut k = Kodi::new(&setting.kodi_path, u64::MAX, 200);
+        k.set_catch_io(!app_argument.is_present("no-catch-io"));
+        k
+    };
 
     let keep_going = app_argument.is_present("keep-going");
 
     let parent_path = app_argument.value_of("parent-path");
 
-    let parent = parent_path.map(move |x| PathAccessData::new(x.to_string(), None, setting.default_user_config));
-    
+    let parent = parent_path
+        .map(move |x| PathAccessData::new(x.to_string(), None, setting.default_user_config));
+
     //TODO: with the new stuff
     let result = match app_m.subcommand() {
         ("check", Some(check_m)) => {
@@ -218,6 +245,7 @@ fn main() -> ExitCode {
     if result.len() > 0 {
         println!("error happended while recursing:");
         for r in &result {
+            println!("");
             r.pretty_print(&app_argument);
         }
     }

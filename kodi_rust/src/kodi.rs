@@ -5,7 +5,7 @@ use std::io;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use subprocess::{Exec, ExitStatus};
+use subprocess::{Exec, ExitStatus, Redirection};
 
 use tempfile::tempdir;
 
@@ -19,7 +19,7 @@ use crate::{data::KodiResult, PathAccessData};
 #[derive(Debug)]
 /// represent error that can happen while handling [`Kodi`]
 pub enum KodiError {
-    CallError(ExitStatus),
+    CallError(ExitStatus, Option<String>),
     InvalidGeneratedCommand,
     CantCreateTemporyDir(io::Error),
     CantOpenResultFile(io::Error),
@@ -29,15 +29,21 @@ pub enum KodiError {
 impl fmt::Display for KodiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::CallError(status) => write!(
+            Self::CallError(status, _) => write!(
                 f,
-                "kodi returned with the status {:?}. Maybe the url is invalid, or can't be emulated. If you followed a link on this site, contact the webmaster with the source url and this url.",
+                "python, when calling the kodi addon, returned with the status code {:?}.",
                 status
             ),
-            Self::InvalidGeneratedCommand => write!(f, "internal error: the generated command is invalid"),
-            Self::CantCreateTemporyDir(_) => write!(f, "internal error: can't create a tempory folder"),
+            Self::InvalidGeneratedCommand => {
+                write!(f, "internal error: the generated command is invalid")
+            }
+            Self::CantCreateTemporyDir(_) => {
+                write!(f, "internal error: can't create a tempory folder")
+            }
             Self::CantOpenResultFile(_) => write!(f, "internal error: can't open the result file"),
-            Self::CantParseResultFile(_) => write!(f, "internal error: can't parse the result file"),
+            Self::CantParseResultFile(_) => {
+                write!(f, "internal error: can't parse the result file")
+            }
         }
     }
 }
@@ -62,6 +68,7 @@ pub struct Kodi {
     python_command: String,
     cache_time: u64,
     cache_size: usize,
+    catch_io: bool,
 }
 
 impl Clone for Kodi {
@@ -75,6 +82,7 @@ impl Clone for Kodi {
             python_command: self.python_command.clone(),
             cache_time: self.cache_time,
             cache_size: self.cache_size,
+            catch_io: self.catch_io,
         }
     }
 }
@@ -96,11 +104,16 @@ impl Kodi {
             python_command: "python2".into(),
             cache_time,
             cache_size,
+            catch_io: false,
         }
     }
 
     pub fn set_python_command(&mut self, command: String) {
         self.python_command = command;
+    }
+
+    pub fn set_catch_io(&mut self, catch_io: bool) {
+        self.catch_io = catch_io;
     }
 
     fn get_commands(&self, tempory_file: &str, access: &PathAccessData) -> Vec<String> {
@@ -160,6 +173,7 @@ impl Kodi {
         let command_argument_vec = self.get_commands(&data_file.to_string_lossy(), &access);
         let mut command_argument = command_argument_vec.iter();
 
+        //TODO: clear useless environment variable
         let first_command = match command_argument.next() {
             Some(value) => value,
             None => return Err(KodiError::InvalidGeneratedCommand),
@@ -170,10 +184,27 @@ impl Kodi {
             callable_command = callable_command.arg(argument)
         }
 
-        let output_code = callable_command.join().unwrap();
-        match output_code {
-            ExitStatus::Exited(0) => (),
-            other => return Err(KodiError::CallError(other)),
+        if self.catch_io {
+            let capture_data = callable_command
+                .stdout(Redirection::Pipe)
+                .stderr(Redirection::Merge)
+                .capture()
+                .unwrap();
+            match capture_data.exit_status {
+                ExitStatus::Exited(0) => (),
+                other => {
+                    return Err(KodiError::CallError(
+                        other,
+                        Some(String::from_utf8_lossy(&capture_data.stdout).to_string()),
+                    ))
+                }
+            };
+        } else {
+            let output_code = callable_command.join().unwrap();
+            match output_code {
+                ExitStatus::Exited(0) => (),
+                other => return Err(KodiError::CallError(other, None)),
+            };
         }
 
         let json_file = match File::open(&data_file) {
