@@ -2,9 +2,9 @@ use std::error::Error;
 use std::fmt;
 use std::fs::File;
 use std::io;
-use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::time::Duration;
 
 use rand::distributions::Uniform;
 use rand::{thread_rng, Rng};
@@ -174,8 +174,11 @@ impl KodiInterface {
                 .stderr(Redirection::Merge)
                 .popen()
                 .map_err(|err| KodiCallError::CreateProcessError(err))
-        };
+        }
 
+        //TODO: this is a workaround: calling communicate_start(Some(...)) multiple time on the same process panic
+        //search for a python-rust communication method not involving stdin (stdout can still be used. also, store the Communicator in the storage for reuse)
+        self.process = None;
         match &mut self.process {
             None => {
                 let popen = invoke_process(&self.exit_hash, &self.python_command)?;
@@ -196,65 +199,58 @@ impl KodiInterface {
             .map(|x| escape(Cow::from(x)).to_string())
             .collect::<Vec<String>>()
             .join(" ");
-        let mut stdin = process
-            .stdin
-            .as_ref()
-            .ok_or(KodiCallError::CantGetStdin())?;
-        stdin
-            .write_all(&[b'r', b'u', b'n', b' '])
-            .map_err(|err| KodiCallError::CantWriteStdin(err))?;
-        stdin
-            .write_all(command_escaped.as_bytes())
-            .map_err(|err| KodiCallError::CantWriteStdin(err))?;
-        stdin
-            .write_all(&[b'\n'])
-            .map_err(|err| KodiCallError::CantWriteStdin(err))?;
-        let mut actual_line = Vec::new();
-        let mut output_string = String::new();
-        let mut buf = [0];
-        loop {
-            let mut stdout = match process.stdout.as_ref() {
-                Some(v) => v,
-                None => return Err(KodiCallError::CantGetStdout(output_string)),
+
+        let mut communicate = process
+            .communicate_start(Some(format!("run {}\n", command_escaped).as_bytes().into()))
+            .limit_time(Duration::from_millis(100));
+
+        let mut past_lines = String::new();
+        let mut actual_line: Vec<u8> = Vec::new();
+        'main: loop {
+            let this_stdout = match communicate.read() {
+                Ok((this_stdout_maybe, _)) => this_stdout_maybe.unwrap(),
+                Err(err) => match err.kind() {
+                    io::ErrorKind::TimedOut => err.capture.0.unwrap(),
+                    _ => panic!(err.error),
+                },
             };
-            match stdout.read(&mut buf) {
-                Ok(v) => v,
-                Err(err) => return Err(KodiCallError::CantReadStdout(output_string, err)),
+
+            for chara in this_stdout {
+                if chara == b'\n' {
+                    past_lines.push('\n');
+                    let decoded_actual_line = String::from_utf8_lossy(&actual_line);
+                    if self.redirect {
+                        println!("{}", decoded_actual_line);
+                    }
+                    if decoded_actual_line == self.exit_hash {
+                        break 'main
+                    }
+                    past_lines.push_str(&decoded_actual_line);
+                    actual_line = Vec::new();
+                } else {
+                    actual_line.push(chara);
+                }
             };
-            if buf[0] == b'\n' {
-                let line_string = String::from_utf8_lossy(&actual_line); //TODO: display as the character is outputted
-                if line_string == self.exit_hash {
-                    break;
-                };
-                if self.redirect {
-                    println!("{}", line_string);
-                };
-                output_string.push_str(&line_string);
-                output_string.push('\n');
-                actual_line = Vec::new();
-            } else {
-                actual_line.push(buf[0]);
-            }
 
             if let Some(exit_code) = process.poll() {
                 match exit_code {
                     ExitStatus::Exited(0) => break,
                     exit_code => {
                         self.process = None;
-                        return Err(KodiCallError::NonZeroExit(output_string, exit_code));
+                        return Err(KodiCallError::NonZeroExit(past_lines, exit_code));
                     }
                 }
             }
         }
 
-        return Ok(output_string);
+        return Ok(past_lines)
     }
 }
 
 impl Drop for KodiInterface {
     fn drop(&mut self) {
         if let Some(process) = &mut self.process {
-            let _ = process.terminate();
+            let _ = process.kill();
         }
     }
 }
@@ -357,20 +353,21 @@ impl Kodi {
             Err(err) => error!("the cache lock is poisoned: {:?}", err),
         };
 
-        let mut kodi_interface = if let Some(cacked_kodi_interface_mutex) = &self.cached_kodi_interface {
-            match cacked_kodi_interface_mutex.lock() {
-                Ok(mut cached_kodi_interface) => match cached_kodi_interface.pop() {
-                    Some(kodi_interface) => kodi_interface,
-                    None => self.create_interface(),
-                },
-                Err(err) => {
-                    error!("the cached kodi interface is poisoned: {:?}", err);
-                    self.create_interface()
+        let mut kodi_interface =
+            if let Some(cacked_kodi_interface_mutex) = &self.cached_kodi_interface {
+                match cacked_kodi_interface_mutex.lock() {
+                    Ok(mut cached_kodi_interface) => match cached_kodi_interface.pop() {
+                        Some(kodi_interface) => kodi_interface,
+                        None => self.create_interface(),
+                    },
+                    Err(err) => {
+                        error!("the cached kodi interface is poisoned: {:?}", err);
+                        self.create_interface()
+                    }
                 }
-            }
-        } else {
-            self.create_interface()
-        };
+            } else {
+                self.create_interface()
+            };
 
         //TODO: make this use the sandbox
         let tempory_folder = match tempdir() {
@@ -381,7 +378,13 @@ impl Kodi {
         let mut data_file: PathBuf = tempory_folder.path().into(); // don't use into_path() to don't persist it
         data_file.push("tmp.json");
 
-        kodi_interface.run(&self.get_commands(&data_file.to_string_lossy(), &access))?;
+        kodi_interface
+            .run(
+                &self.get_commands(&data_file.to_string_lossy(), &access)
+            )
+            .map_err(|x| {
+                x
+            })?;
 
         let json_file = match File::open(&data_file) {
             Ok(value) => value,
