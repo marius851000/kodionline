@@ -47,7 +47,6 @@ struct SpawnNewThreadData {
     is_poisoned: RwLock<bool>,
     errors: Mutex<Vec<RecurseReport>>, //TODO: custom type for more display configuration
     progress_bar: Option<ProgressBar>,
-    progress: Mutex<(u64, u64)>, //finished, total task
 }
 
 impl SpawnNewThreadData {
@@ -95,18 +94,10 @@ impl SpawnNewThreadData {
     }
 
     fn increment_finished_task(&self) {
-        {
-            let mut progress = self.progress.lock().unwrap();
-            progress.0 += 1;
-        }
         self.progress_bar.as_ref().map(|bar| bar.inc(1));
     }
 
     fn add_task(&self, to_add: u64) {
-        {
-            let mut progress = self.progress.lock().unwrap();
-            progress.1 += to_add;
-        }
         self.progress_bar.as_ref().map(|bar| bar.inc_length(to_add));
     }
 
@@ -255,12 +246,11 @@ fn kodi_recurse_inner_thread<
         }
     }
 
-    //TODO: dedup
-
     for thread in threads.drain(..) {
         if let Err(_) = thread.0.join() {
             if thread.1.fetch_or(false, Ordering::Relaxed) == false {
                 spawn_thread_data.decrement_worker();
+                spawn_thread_data.increment_finished_task();
             };
             spawn_thread_data.add_error(
                 RecurseReport::ThreadPanicked(thread.2, Some(access.clone())),
@@ -300,7 +290,6 @@ pub fn kodi_recurse_par<
         is_poisoned: RwLock::new(false),
         errors: Mutex::new(Vec::new()),
         progress_bar,
-        progress: Mutex::new((0, 1))
     });
 
     let parent_data = match parent {

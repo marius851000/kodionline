@@ -239,7 +239,10 @@ impl KodiInterface {
             if let Some(exit_code) = process.poll() {
                 match exit_code {
                     ExitStatus::Exited(0) => break,
-                    exit_code => return Err(KodiCallError::NonZeroExit(output_string, exit_code)),
+                    exit_code => {
+                        self.process = None;
+                        return Err(KodiCallError::NonZeroExit(output_string, exit_code));
+                    }
                 }
             }
         }
