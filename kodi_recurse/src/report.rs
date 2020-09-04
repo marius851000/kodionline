@@ -1,4 +1,5 @@
 use crate::AppArgument;
+use crate::ReportBuilder;
 use console::{style, Style};
 use kodi_rust::{KodiError, PathAccessData};
 use std::sync::Arc;
@@ -43,7 +44,7 @@ impl ReportKind {
 
 #[derive(Debug, Clone)]
 pub enum RecurseReport {
-    CalledReport(PathAccessData, Option<PathAccessData>, String), //child, parent, message
+    CalledReport(PathAccessData, Option<PathAccessData>, ReportBuilder), //child, parent, message
     ThreadPanicked(PathAccessData, Option<PathAccessData>),       //child, parent
     KodiCallError(PathAccessData, Arc<KodiError>),                //child, error
 }
@@ -51,7 +52,7 @@ pub enum RecurseReport {
 impl RecurseReport {
     pub fn get_report_type(&self) -> ReportKind {
         match self {
-            RecurseReport::CalledReport(_, _, _) => ReportKind::Error,
+            RecurseReport::CalledReport(_, _, report) => report.kind.clone(),
             RecurseReport::ThreadPanicked(_, _) => ReportKind::Error,
             RecurseReport::KodiCallError(_, _) => ReportKind::Error,
         }
@@ -72,7 +73,7 @@ impl RecurseReport {
 
     pub fn get_summary_text(&self) -> String {
         match self {
-            RecurseReport::CalledReport(_, _, message) => message.clone(),
+            RecurseReport::CalledReport(_, _, report) => report.summary.clone(),
             RecurseReport::KodiCallError(_, kodi_error) => match kodi_error.as_ref() {
                 KodiError::CallError(e) => format!("can't get data from a plugin (when trying to call python code): {}", e),
                 e => format!("can't get data from a plugin: {}", e),
@@ -84,7 +85,7 @@ impl RecurseReport {
     pub fn is_internal_error(&self) -> bool {
         // assume true by defaumt
         match self {
-            Self::CalledReport(_, _, _) => false,
+            Self::CalledReport(_, _, report) => report.is_internal_error,
             Self::KodiCallError(_, call_error) => match call_error.as_ref() {
                 KodiError::CallError(e) => !e.is_python_error(),
                 _ => true,
@@ -95,11 +96,15 @@ impl RecurseReport {
     pub fn get_tip(&self, app_argument: &AppArgument) -> Vec<String> {
         let mut tips = Vec::new();
 
+        if let Self::CalledReport(_, _, report) = self {
+            for tip in &report.tips {
+                tips.push(tip.clone());
+            };
+        };
+
         if self.is_internal_error() {
             tips.push("this is likely an issue in the kodionline program".to_string())
-        }
-
-        //TODO: parent
+        };
 
         // try to get the command to reproduce the error
         let (child, parent) = self.get_reproduce_access();
@@ -223,6 +228,13 @@ impl RecurseReport {
             }
             _ => (),
         };
+
+        if let Self::CalledReport(_, _, report) = self {
+            for log in &report.logs {
+                result.push(log.clone());
+            };
+        };
+
         result
     }
 

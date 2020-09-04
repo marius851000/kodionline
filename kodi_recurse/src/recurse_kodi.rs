@@ -1,4 +1,5 @@
 use crate::report::RecurseReport;
+use crate::ReportBuilder;
 use kodi_rust::data::{KodiResult, Page, SubContent};
 use kodi_rust::{Kodi, PathAccessData};
 use indicatif::ProgressBar;
@@ -34,7 +35,15 @@ impl<'a> RecurseInfo<'a> {
         self.errors.push(RecurseReport::CalledReport(
             self.access.clone(),
             self.parent_access.map(|x| x.clone()),
-            error_message,
+            ReportBuilder::new_error(error_message),
+        ));
+    }
+
+    pub fn add_report(&mut self, report: ReportBuilder) {
+        self.errors.push(RecurseReport::CalledReport(
+            self.access.clone(),
+            self.parent_access.map(|x| x.clone()),
+            report
         ));
     }
 }
