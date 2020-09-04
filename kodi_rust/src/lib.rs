@@ -1,7 +1,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 mod kodi;
-pub use kodi::{Kodi, KodiCallError, KodiError, KodiInterface};
+pub use kodi::{Kodi, KodiCallError, KodiError};
 
 pub mod data;
 

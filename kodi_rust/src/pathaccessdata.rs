@@ -6,40 +6,58 @@ use crate::{
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use serde::Serialize;
 
+/// Store an data required to define the way to acceed to a kodi plugin virtual folder.
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub struct PathAccessData {
+    /// the path of the folder, of the kind ``plugin://<plugin id>/<internal path>``
     pub path: String,
+    /// the various inputs that will be provided if the plugin ask user input. The first element will be given first.
     pub input: Vec<String>,
+    /// the configuration that will be passed along with this url. Plugin may change content they display based on that.
     pub config: UserConfig,
 }
 
 impl PathAccessData {
+    /// create a new [`PathAccessData`] based on the ``path``, ``input`` (if exist) and ``config``.
+    ///
+    /// input is decoded with [`decode_input`]. That is, percent encoded string separated by ``:``
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use kodi_rust::{PathAccessData, UserConfig};
+    /// PathAccessData::new("plugin://.../...".to_string(), Some("a:b"), UserConfig::default());
+    /// ```
     pub fn new(path: String, input: Option<&str>, config: UserConfig) -> Self {
         PathAccessData {
             path,
-            input: decode_input(input),
+            input: input.map(|x| decode_input(x)).unwrap_or_else(|| Vec::new()),
             config,
         }
     }
 
+    /// Shortcut for [`PathAccessData::new`]. Return ``None`` if path is ``None``, else return [`PathAccessData::new`] with the three arguments.
     pub fn try_create_from_url(
         path: Option<String>,
         input: Option<&str>,
         config: UserConfig,
     ) -> Option<Self> {
-        match path {
-            Some(path_solved) => Some(Self::new(path_solved, input, config)),
-            None => None,
-        }
+        path.map(|x| Self::new(x, input, config))
     }
 }
 
+/// Contain a representation of [`PathAccessData`] dedicated to be displayed in a web page.
 #[derive(Serialize)]
 pub struct PathAccessFormat {
+    /// the path, urlencoded
     pub path_safe: String,
+    /// the path, html escaped
     pub path_escaped: String,
+    /// the input, encoded, and safe to put into an url (all but ``:`` and alphanumeric are absent)
     pub input_encoded: String,
+    /// the config
     pub config: UserConfig,
+    /// the uri of the config, that may be then decoded. It can be safely embedded into a webpage. May contain alphanumeric, ``!`` and ``.``
     pub config_uri_safe: String,
 }
 

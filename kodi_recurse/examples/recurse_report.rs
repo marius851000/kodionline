@@ -1,7 +1,6 @@
 use kodi_recurse::AppArgument;
 use kodi_recurse::{RecurseReport, ReportKind};
 use kodi_rust::{PathAccessData, UserConfig};
-use std::collections::{HashMap, HashSet};
 
 fn main() {
     println!("displaying the various report kind:");

@@ -81,7 +81,7 @@ pub fn render_plugin(
         None => return generate_error_page("impossible to get type of extension".to_string()),
     };
 
-    let mut input = decode_input(input.map(|x| x.as_str()));
+    let mut input = input.map(|x| decode_input(&x)).unwrap_or_else(|| Vec::new());
 
     if let Some(value) = additional_input {
         input.push(value)

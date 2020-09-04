@@ -1,20 +1,15 @@
 use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
 
-pub fn decode_input(inputs_option: Option<&str>) -> Vec<String> {
-    match inputs_option {
-        Some(inputs_raw) => {
-            if inputs_raw.len() == 0 {
-                Vec::new()
-            } else {
-                let mut result = Vec::new();
-                for input in inputs_raw.split(':') {
-                    result.push(percent_decode_str(input).decode_utf8_lossy().into());
-                    //TODO: maybe catch the error someway, just decide what to do in this case
-                }
-                result
-            }
+pub fn decode_input(inputs_option: &str) -> Vec<String> {
+    if inputs_option.len() == 0 {
+        Vec::new()
+    } else {
+        let mut result = Vec::new();
+        for input in inputs_option.split(':') {
+            result.push(percent_decode_str(input).decode_utf8_lossy().into());
+            //TODO: maybe catch the error someway, just decide what to do in this case
         }
-        None => Vec::new(),
+        result
     }
 }
 

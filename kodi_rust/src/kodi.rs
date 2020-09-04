@@ -136,7 +136,7 @@ impl Error for KodiCallError {
 }
 
 #[derive(Debug)]
-pub struct KodiInterface {
+struct KodiInterface {
     process: Option<Popen>,
     exit_hash: String,
     python_command: String,
@@ -258,6 +258,10 @@ impl Drop for KodiInterface {
 #[derive(Debug)]
 /// represent a kodi/xbmc instance. Each [`Kodi`] instance have a configuration file associated,
 /// where kodi store various data, including plugin.
+///
+/// It also have a cache to store recent results. It can be called by multiple threads.
+///
+/// It also store a list of unused python thread to not have to start them every time. This is disabled by default, but can be enabled by [`Kodi::set_keep_alive`]. Please note that this may lead to security issue if a plugin is hacked, and a sandbox is put into place for child process.
 pub struct Kodi {
     kodi_config_path: String,
     cache: Mutex<TimedCache<PathAccessData, KodiResult>>,
@@ -270,6 +274,7 @@ pub struct Kodi {
 
 impl Kodi {
     /// create a new kodi addon based on a path, with a cache configured for ``cache_time`` seconds with ``cache_elem`` cached element
+    ///
     /// # Examples
     ///
     /// ```
@@ -290,10 +295,12 @@ impl Kodi {
         }
     }
 
+    /// set the command this program will use to call python. Common value should include ``python2`` and ``python3`` (default to ``python2`` until kodi 19)
     pub fn set_python_command(&mut self, command: String) {
         self.python_command = command;
     }
 
+    /// if ``keep_alive`` is ``true``, it will reuse python thread. If ``false``, it will invoke python every time it need to run a python plugin.
     pub fn set_keep_alive(&mut self, keep_alive: bool) {
         if keep_alive {
             self.cached_kodi_interface = Some(Mutex::new(Vec::new()));
@@ -302,6 +309,7 @@ impl Kodi {
         };
     }
 
+    /// set to ``false`` to display stdout of called python, or ``true`` to not display them.
     pub fn set_catch_io(&mut self, catch_io: bool) {
         self.catch_io = catch_io;
     }
