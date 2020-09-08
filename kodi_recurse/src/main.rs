@@ -10,6 +10,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::process::ExitCode;
 use std::sync::Arc;
+use console::style;
 
 use indicatif::ProgressBar;
 
@@ -282,7 +283,14 @@ fn main() -> ExitCode {
             r.pretty_print(&app_argument);
         }
     }
-    println!("there are {} errors", result.len());
+
+    if result.len() > 1 {
+        println!("there are {} errors.", style(result.len().to_string()).red());
+    } else if result.len() == 1 {
+        println!("there is {} error.", style("one").red());
+    } else {
+        println!("there are no error.");
+    }
 
     ExitCode::SUCCESS
 }

@@ -102,7 +102,7 @@ impl RecurseReport {
         if let Self::KodiCallError(_, kodi_err) = self {
             if let KodiError::NonZeroResult(log, _) = kodi_err.as_ref() {
                 if log.is_none() {
-                    tips.push(format!("log not avalaible. To have it display in the error, run without {}/{}.", style("--no-catch-output").blue(), style("-n").blue()));
+                    tips.push(format!("log not avalaible. To have it display in the report, run without {}/{} (the full log should be viewable upper).", style("--no-catch-output").blue(), style("-n").blue()));
                 };
             };
         };

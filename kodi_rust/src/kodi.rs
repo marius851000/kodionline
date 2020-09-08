@@ -29,7 +29,7 @@ pub enum KodiError {
 impl fmt::Display for KodiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NonZeroResult(_, exit_status) => write!(f, "python returned a non zero value (he probably crashed, with the exit status {:?})", exit_status), //TODO: maybe better logging
+            Self::NonZeroResult(_, exit_status) => write!(f, "python returned a non zero value (it probably crashed, with the exit status {:?})", exit_status), //TODO: maybe better logging
             Self::CantCreateProcess(_) => write!(f, "failed to invoke the child process"),
             Self::CantCreateTemporyDir(_) => {
                 write!(f, "internal error: can't create a tempory folder")
