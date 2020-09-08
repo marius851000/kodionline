@@ -30,6 +30,7 @@ pkgs.stdenv.mkDerivation {
 		python2
 		urlencode
 		pkg-config
+		bubblewrap
 	];
 
 	NIX_ENFORCE_PURITY=0;

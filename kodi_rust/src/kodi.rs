@@ -4,10 +4,12 @@ use std::fs::File;
 use std::io;
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::include_bytes;
+use std::io::Write;
 
 use subprocess::{Exec, ExitStatus, PopenError, Redirection};
 
-use tempfile::tempdir;
+use tempfile::{tempdir, TempDir};
 
 use cached::Cached;
 use cached::TimedCache;
@@ -15,6 +17,8 @@ use cached::TimedCache;
 use log::error;
 
 use crate::{data::KodiResult, PathAccessData};
+
+static KODI_INTEFACE_BIN: &[u8; 2728] = include_bytes!("../kodi_interface.py");
 
 #[derive(Debug)]
 /// represent error that can happen while handling [`Kodi`]
@@ -66,6 +70,10 @@ pub struct Kodi {
     cache_time: u64,
     cache_size: usize,
     catch_stdout: bool,
+    sandbox_call: bool,
+    global_tempdir: TempDir,
+    /// list of allowed path in the sandbox, absolute
+    pub allowed_path: Vec<String>,
 }
 
 impl Kodi {
@@ -77,7 +85,17 @@ impl Kodi {
     /// use kodi_rust::Kodi;
     /// let kodi = Kodi::new("~/.kodi", 3600, 500);
     /// ```
+    ///
+    /// # Panic
+    ///
+    /// panic if there is a problem at initialisation. This include inability to create a tempory file for the main python script.
     pub fn new(path: &str, cache_time: u64, cache_size: usize) -> Self {
+        let global_tempdir = tempdir().unwrap();
+
+        let invoke_bin_path = global_tempdir.path().join("kodi_interface.py");
+        let mut file = File::create(invoke_bin_path).unwrap();
+        file.write_all(KODI_INTEFACE_BIN).unwrap();
+
         Self {
             kodi_config_path: shellexpand::tilde(path).into(),
             cache: Mutex::new(TimedCache::with_lifespan_and_capacity(
@@ -87,6 +105,9 @@ impl Kodi {
             cache_time,
             cache_size,
             catch_stdout: true,
+            sandbox_call: true,
+            global_tempdir,
+            allowed_path: Vec::new()
         }
     }
 
@@ -102,9 +123,13 @@ impl Kodi {
         self.catch_stdout = catch_stdout;
     }
 
+    pub fn sandbox_call(&mut self, sandbox_call: bool) {
+        self.sandbox_call = sandbox_call;
+    }
+
     fn get_arguments(&self, tempory_file: &str, access: &PathAccessData) -> Vec<String> {
         let mut result = vec![
-            "kodi_interface.py".to_string(), //TODO: embed in bin, extract to tmp
+            self.global_tempdir.path().join("kodi_interface.py").to_str().unwrap().to_string(), //TODO: embed in bin, extract to tmp
             self.kodi_config_path.clone(),
             access.path.clone(),
             tempory_file.into(),
@@ -154,11 +179,40 @@ impl Kodi {
             Err(err) => return Err(KodiError::CantCreateTemporyDir(err)),
         };
 
-        let mut result_file: PathBuf = tempory_folder.path().into(); // don't use into_path() to don't persist it
+        let result_dir: PathBuf = tempory_folder.path().into(); // don't use into_path() to don't persist it
+        let mut result_file = result_dir.clone();
         result_file.push("tmp.json");
 
         let arguments = self.get_arguments(&result_file.to_string_lossy(), &access);
-        let mut to_invoke = Exec::cmd(&self.python_command);
+
+        let mut to_invoke = if self.sandbox_call {
+            let mut bwrap_invoke = Exec::cmd("bwrap");
+            for folder in &[
+                &self.kodi_config_path,
+                "/nix",
+                "/gnu",
+                "/usr",
+                "/bin",
+                self.global_tempdir.path().to_str().unwrap()
+            ] {//TODO: whereis self.kodi_config_path
+                //TODO: permit to configure this in the configuration file
+                bwrap_invoke = bwrap_invoke.arg("--ro-bind-try").arg(folder).arg(folder);
+            };
+            let python_path = std::env::var("PYTHONPATH").unwrap_or("".to_string());
+            let python_path_splited = python_path.split(":");
+            for folder in python_path_splited {
+                bwrap_invoke = bwrap_invoke.arg("--ro-bind-try").arg(folder).arg(folder);
+            };
+            for folder in &self.allowed_path {
+                bwrap_invoke = bwrap_invoke.arg("--ro-bind-try").arg(folder).arg(folder);
+            };
+            let result_dir_str = result_dir.to_str().unwrap();
+            bwrap_invoke = bwrap_invoke.arg("--bind").arg(result_dir_str).arg(result_dir_str);
+            bwrap_invoke.arg(&self.python_command)
+        } else {
+            Exec::cmd(&self.python_command)
+        };
+
         if self.catch_stdout {
             to_invoke = to_invoke.stdout(Redirection::Pipe)
                 .stderr(Redirection::Merge);

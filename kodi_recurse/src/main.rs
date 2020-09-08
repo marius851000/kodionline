@@ -65,6 +65,12 @@ fn main() -> ExitCode {
                 .long("no-catch-io")
                 .help("do not catch the output of python code. It will log the python output as it is executed, rather than being displayed only after a crash")
         )
+        .arg(
+            Arg::with_name("use-sandbox")
+                .short("s")
+                .long("use-sandbox")
+                .help("sandbox the called command with bubblewrap")
+        )
         .subcommand(
             SubCommand::with_name("check")
                 .about("check the validity of the given kodi path and their child")
@@ -91,7 +97,7 @@ fn main() -> ExitCode {
                     "can't open the setting file at {} due to {:?}",
                     setting_path, err
                 );
-                return ExitCode::SUCCESS;
+                return ExitCode::FAILURE;
             }
         },
         None => Setting::default(),
@@ -107,6 +113,7 @@ fn main() -> ExitCode {
             "parent-path",
             "no-catch-output",
             "keep_going",
+            "use-sandbox",
         ],
         short_version: {
             let mut s = HashMap::new();
@@ -117,6 +124,7 @@ fn main() -> ExitCode {
             s.insert("jobs", "j");
             s.insert("keep-going", "k");
             s.insert("no-catch-output", "n");
+            s.insert("use-sandbox", "s");
             s
         },
         args: {
@@ -130,11 +138,10 @@ fn main() -> ExitCode {
         },
         bool_set: {
             let mut b = HashSet::new();
-            if app_m.is_present("keep-going") {
-                b.insert("keep-going".to_string());
-            };
-            if app_m.is_present("no-catch-output") {
-                b.insert("no-catch-output".to_string());
+            for param in &["keep-going", "no-catch-output", "use-sandbox"] {
+                if app_m.is_present(param) {
+                    b.insert(param.to_string());
+                };
             };
             b
         },
@@ -185,6 +192,8 @@ fn main() -> ExitCode {
     let kodi = {
         let mut k = Kodi::new(&setting.kodi_path, u64::MAX, 200);
         k.set_catch_stdout(!no_catch_output);
+        k.allowed_path = setting.allowed_path.clone();
+        k.sandbox_call(app_argument.is_present("use-sandbox"));
         k
     };
 

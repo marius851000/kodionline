@@ -57,6 +57,8 @@ fn main() {
 
     kodi.set_python_command(setting.python_command.clone());
     kodi.set_catch_stdout(false);
+    kodi.sandbox_call(true);
+    kodi.allowed_path = setting.allowed_path.clone();
 
     rocket::ignite()
         .manage(kodi)

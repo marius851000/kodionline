@@ -7,6 +7,7 @@ pub struct Setting {
     pub kodi_path: String,
     pub python_command: String,
     pub default_user_config: UserConfig,
+    pub allowed_path: Vec<String>,
 }
 
 impl Default for Setting {
@@ -16,6 +17,7 @@ impl Default for Setting {
             kodi_path: "~/.kodi".into(),
             python_command: "python2".into(), //NOTE: change to python3 once kodi 19 is publicly released
             default_user_config: UserConfig::default(),
+            allowed_path: Vec::new(),
         }
     }
 }
