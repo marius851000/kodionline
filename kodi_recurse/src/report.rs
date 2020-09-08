@@ -74,10 +74,7 @@ impl RecurseReport {
     pub fn get_summary_text(&self) -> String {
         match self {
             RecurseReport::CalledReport(_, _, report) => report.summary.clone(),
-            RecurseReport::KodiCallError(_, kodi_error) => match kodi_error.as_ref() {
-                KodiError::CallError(e) => format!("can't get data from a plugin (when trying to call python code): {}", e),
-                e => format!("can't get data from a plugin: {}", e),
-            },
+            RecurseReport::KodiCallError(_, kodi_error) => format!("can't get data from a plugin: {}", kodi_error),
             RecurseReport::ThreadPanicked(_, _) => "a thread panicked unexpectingly".into(),
         }
     }
@@ -87,7 +84,7 @@ impl RecurseReport {
         match self {
             Self::CalledReport(_, _, report) => report.is_internal_error,
             Self::KodiCallError(_, call_error) => match call_error.as_ref() {
-                KodiError::CallError(e) => !e.is_python_error(),
+                KodiError::NonZeroResult(_, _) => false,
                 _ => true,
             },
             _ => true,
@@ -102,6 +99,14 @@ impl RecurseReport {
             };
         };
 
+        if let Self::KodiCallError(_, kodi_err) = self {
+            if let KodiError::NonZeroResult(log, _) = kodi_err.as_ref() {
+                if log.is_none() {
+                    tips.push(format!("log not avalaible. To have it display in the error, run without {}/{}.", style("--no-catch-output").blue(), style("-n").blue()));
+                };
+            };
+        };
+
         if self.is_internal_error() {
             tips.push("this is likely an issue in the kodionline program".to_string())
         };
@@ -110,7 +115,7 @@ impl RecurseReport {
         let (child, parent) = self.get_reproduce_access();
         let mut new_command = app_argument.clone();
         new_command.bool_set.remove("keep-going");
-        new_command.bool_set.insert("no-catch-io".into());
+        new_command.bool_set.insert("no-catch-output".into());
         new_command.args.insert("jobs".to_string(), "1".to_string());
         new_command
             .args
@@ -187,8 +192,8 @@ impl RecurseReport {
         let mut result = Vec::new();
         match self {
             Self::KodiCallError(_, err) => {
-                if let KodiError::CallError(e) = err.as_ref() {
-                    if let Some(log) = e.get_log() {
+                if let KodiError::NonZeroResult(maybe_log, _) = err.as_ref() {
+                    if let Some(log) = maybe_log {
                         let mut collected: Vec<&str> = log.split("\n").collect::<Vec<&str>>();
                         let mut logs = Vec::new();
                         let mut all_line_included = true;

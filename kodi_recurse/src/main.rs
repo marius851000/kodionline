@@ -59,7 +59,7 @@ fn main() -> ExitCode {
                 .help("still continue the recursive browsing even when an error occurred"),
         )
         .arg(
-            Arg::with_name("no-catch-io")
+            Arg::with_name("no-catch-output")
                 .short("n")
                 .long("no-catch-io")
                 .help("do not catch the output of python code. It will log the python output as it is executed, rather than being displayed only after a crash")
@@ -104,7 +104,7 @@ fn main() -> ExitCode {
             "path",
             "jobs",
             "parent-path",
-            "no-catch-io",
+            "no-catch-output",
             "keep_going",
         ],
         short_version: {
@@ -115,7 +115,7 @@ fn main() -> ExitCode {
             s.insert("parent-path", "P");
             s.insert("jobs", "j");
             s.insert("keep-going", "k");
-            s.insert("no-catch-io", "n");
+            s.insert("no-catch-output", "n");
             s
         },
         args: {
@@ -132,8 +132,8 @@ fn main() -> ExitCode {
             if app_m.is_present("keep-going") {
                 b.insert("keep-going".to_string());
             };
-            if app_m.is_present("no-catch-io") {
-                b.insert("no-catch-io".to_string());
+            if app_m.is_present("no-catch-output") {
+                b.insert("no-catch-output".to_string());
             };
             b
         },
@@ -179,12 +179,11 @@ fn main() -> ExitCode {
         setting.default_user_config.clone(),
     );
 
-    let no_catch_io = app_argument.is_present("no-catch-io");
+    let no_catch_output = app_argument.is_present("no-catch-output");
 
     let kodi = {
         let mut k = Kodi::new(&setting.kodi_path, u64::MAX, 200);
-        k.set_catch_io(!no_catch_io);
-        k.set_keep_alive(true);
+        k.set_catch_stdout(!no_catch_output);
         k
     };
 
@@ -195,7 +194,7 @@ fn main() -> ExitCode {
     let parent = parent_path
         .map(move |x| PathAccessData::new(x.to_string(), None, setting.default_user_config));
 
-    let progress_bar = if no_catch_io {
+    let progress_bar = if no_catch_output {
         None
     } else {
         Some(ProgressBar::new(1))

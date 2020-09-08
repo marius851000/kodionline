@@ -56,6 +56,7 @@ fn main() {
     };
 
     kodi.set_python_command(setting.python_command.clone());
+    kodi.set_catch_stdout(false);
 
     rocket::ignite()
         .manage(kodi)
