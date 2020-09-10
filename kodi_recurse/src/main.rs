@@ -191,6 +191,14 @@ fn main() -> ExitCode {
         k
     };
 
+    let progress_bar = if no_catch_output {
+        None
+    } else {
+        Some(ProgressBar::new(1))
+    };
+
+    let have_progress_bar = progress_bar.is_some();
+
     let option = RecurseOption {
         kodi,
         top_access: PathAccessData::new(
@@ -201,12 +209,9 @@ fn main() -> ExitCode {
         top_parent: app_argument.value_of("parent-path")
             .map(move |x| PathAccessData::new(x.to_string(), None, setting.default_user_config)),
         keep_going: app_argument.is_present("keep-going"),
-        progress_bar: if no_catch_output {
-            None
-        } else {
-            Some(ProgressBar::new(1))
-        },
-        thread_nb: jobs
+        progress_bar,
+        thread_nb: jobs,
+        app_argument: app_argument.clone(),
     };
 
     //TODO: move the call to kodi_recurse out of here, just set the two variable to function
@@ -219,22 +224,16 @@ fn main() -> ExitCode {
         println!("no sub-command given");
         return ExitCode::FAILURE;
     };
-    /*let result = match app_argument.subcommand() {
-        ("check", Some(check_argument)) => do_check(app_argument, check_argument, option),
-        _ => {
-            println!("no sub-command given");
-            return ExitCode::FAILURE;
-        }
-    };*/
 
-    //TODO: pretty print
     if result.len() > 0 {
-        println!("error happended while recursing:");
-        for r in &result {
-            println!("");
-            r.pretty_print(&app_argument);
+        println!("error happened while recursing:");
+        if !have_progress_bar {
+            for r in &result {
+                println!("");
+                r.pretty_print(&app_argument);
+            }
         }
-    }
+    };
 
     if result.len() > 1 {
         println!("there are {} errors.", style(result.len().to_string()).red());

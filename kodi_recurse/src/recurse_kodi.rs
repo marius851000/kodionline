@@ -1,6 +1,7 @@
 use crate::report::RecurseReport;
 use crate::ReportBuilder;
 use crate::RecurseOption;
+use crate::AppArgument;
 
 use kodi_rust::data::{KodiResult, Page, SubContent};
 use kodi_rust::{Kodi, PathAccessData};
@@ -60,6 +61,7 @@ struct SpawnNewThreadData {
     is_poisoned: RwLock<bool>,
     errors: Mutex<Vec<RecurseReport>>, //TODO: custom type for more display configuration
     progress_bar: Option<ProgressBar>,
+    app_argument: AppArgument,
 }
 
 impl SpawnNewThreadData {
@@ -99,6 +101,10 @@ impl SpawnNewThreadData {
     }
 
     fn add_error(&self, err: RecurseReport, keep_going: bool) {
+        self.progress_bar.as_ref().map(|bar| {
+            bar.println(err.get_text_to_print(&self.app_argument));
+            bar.println("\n");
+        });
         let mut errors_lock = self.errors.lock().unwrap();
         if !keep_going {
             self.poison();
@@ -299,6 +305,7 @@ pub fn kodi_recurse_par<
         is_poisoned: RwLock::new(false),
         errors: Mutex::new(Vec::new()),
         progress_bar: option.progress_bar,
+        app_argument: option.app_argument,
     });
 
     let parent_data = match option.top_parent {
