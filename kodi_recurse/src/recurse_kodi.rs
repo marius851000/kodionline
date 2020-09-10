@@ -1,5 +1,7 @@
 use crate::report::RecurseReport;
 use crate::ReportBuilder;
+use crate::RecurseOption;
+
 use kodi_rust::data::{KodiResult, Page, SubContent};
 use kodi_rust::{Kodi, PathAccessData};
 use indicatif::ProgressBar;
@@ -8,6 +10,8 @@ use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, Condvar, Mutex, RwLoc
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
+
+use log::error;
 
 #[derive(Clone)]
 pub struct RecurseInfo<'a> {
@@ -276,32 +280,28 @@ pub fn kodi_recurse_par<
     F: 'static + Fn(&mut RecurseInfo, T) -> T + Clone + Send,
     C: 'static + Fn(&mut RecurseInfo, &T) -> bool + Clone + Send,
 >(
-    kodi: Kodi,
-    access: PathAccessData,
-    parent: Option<PathAccessData>,
+    mut option: RecurseOption,
     data: T,
     func: F,
     skip_this_and_children: C,
-    keep_going: bool,
-    progress_bar: Option<ProgressBar>,
-    thread_nb: usize,
 ) -> Vec<RecurseReport> {
-    if thread_nb == 0 {
-        panic!()
+    if option.thread_nb == 0 {
+        error!("kodi_recurse_par require to have at least one active thread ! Making use of 1 thread instead of 0.");
+        option.thread_nb = 1;
     }
 
-    let kodi = Arc::new(kodi);
+    let kodi = Arc::new(option.kodi);
 
     let spawn_thread_data = Arc::new(SpawnNewThreadData {
-        thread_nb,
+        thread_nb: option.thread_nb,
         effective_task: Arc::new(Mutex::new(1)),
         condvar: Condvar::new(),
         is_poisoned: RwLock::new(false),
         errors: Mutex::new(Vec::new()),
-        progress_bar,
+        progress_bar: option.progress_bar,
     });
 
-    let parent_data = match parent {
+    let parent_data = match option.top_parent {
         Some(parent_access) => Some((
             match kodi.invoke_sandbox(&parent_access) {
                 Ok(r) => match r {
@@ -319,7 +319,8 @@ pub fn kodi_recurse_par<
     };
 
     let spawn_thread_data_cloned = spawn_thread_data.clone();
-    let access_cloned = access.clone();
+    let access_cloned = option.top_access.clone();
+    let keep_going_cloned = option.keep_going.clone();
     let original_thread = thread::spawn(move || {
         kodi_recurse_inner_thread(
             kodi,
@@ -330,14 +331,14 @@ pub fn kodi_recurse_par<
             data,
             spawn_thread_data_cloned,
             Arc::new(AtomicBool::new(false)),
-            keep_going,
+            keep_going_cloned,
         )
     });
 
     match original_thread.join() {
         Ok(_) => (),
         Err(_) => {
-            spawn_thread_data.add_error(RecurseReport::ThreadPanicked(access, None), keep_going)
+            spawn_thread_data.add_error(RecurseReport::ThreadPanicked(option.top_access, None), option.keep_going)
         }
     }
 

@@ -991,6 +991,7 @@ dependencies = [
  "console",
  "indicatif",
  "kodi_rust",
+ "log 0.4.11",
  "reqwest",
  "serde_json",
  "shell-escape",

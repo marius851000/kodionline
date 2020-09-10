@@ -1,16 +1,16 @@
 #![feature(process_exitcode_placeholder)]
 //TODO: use env_logger
 use clap::{App, Arg, SubCommand};
-use kodi_recurse::kodi_recurse_par;
 use kodi_recurse::AppArgument;
 use kodi_rust::{Kodi, PathAccessData, Setting};
-use reqwest::{blocking::ClientBuilder, StatusCode};
 
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::process::ExitCode;
-use std::sync::Arc;
 use console::style;
+
+use kodi_recurse::do_check;
+use kodi_recurse::RecurseOption;
 
 use indicatif::ProgressBar;
 
@@ -181,12 +181,6 @@ fn main() -> ExitCode {
 
     let plugin_path = app_argument.value_of("path").unwrap();
 
-    let access = PathAccessData::new(
-        plugin_path.to_string(),
-        None,
-        setting.default_user_config.clone(),
-    );
-
     let no_catch_output = app_argument.is_present("no-catch-output");
 
     let kodi = {
@@ -197,92 +191,41 @@ fn main() -> ExitCode {
         k
     };
 
-    let keep_going = app_argument.is_present("keep-going");
-
-    let parent_path = app_argument.value_of("parent-path");
-
-    let parent = parent_path
-        .map(move |x| PathAccessData::new(x.to_string(), None, setting.default_user_config));
-
-    let progress_bar = if no_catch_output {
-        None
-    } else {
-        Some(ProgressBar::new(1))
+    let option = RecurseOption {
+        kodi,
+        top_access: PathAccessData::new(
+            plugin_path.to_string(),
+            None,
+            setting.default_user_config.clone(),
+        ),
+        top_parent: app_argument.value_of("parent-path")
+            .map(move |x| PathAccessData::new(x.to_string(), None, setting.default_user_config)),
+        keep_going: app_argument.is_present("keep-going"),
+        progress_bar: if no_catch_output {
+            None
+        } else {
+            Some(ProgressBar::new(1))
+        },
+        thread_nb: jobs
     };
 
     //TODO: move the call to kodi_recurse out of here, just set the two variable to function
-    let result = match app_m.subcommand() {
-        ("check", Some(check_m)) => {
-            //TODO: more control on verbosity
-            let check_media = check_m.is_present("check-media");
-            let client = Arc::new(ClientBuilder::new().referer(false).build().unwrap());
-            kodi_recurse_par::<(), _, _>(
-                kodi,
-                access,
-                parent,
-                (),
-                move |info, _| {
-                    let page = info.get_page();
-                    if let Some(resolved_listitem) = &page.resolved_listitem {
-                        if check_media {
-                            // check if the resolved media exist
-                            //TODO: check other referenced content, and make look help look exactly what is wrong
-                            if let Some(media_url) = &resolved_listitem.path {
-                                if media_url.starts_with("http://")
-                                    | media_url.starts_with("http://")
-                                {
-                                    let resp = client.clone().get(media_url).send().unwrap();
-                                    match resp.status() {
-                                        StatusCode::OK => (),
-                                        err_code => info.add_error_string(format!(
-                                            "getting the distant media at {:?} returned the error code {}",
-                                            media_url, err_code
-                                        )),
-                                    };
-                                }
-                                if media_url.starts_with("/") {
-                                    if let Err(err) = File::open(media_url) {
-                                        info.add_error_string(format!(
-                                            "can't get the local media at {:?}: {:?}",
-                                            media_url, err
-                                        ));
-                                    };
-                                } else {
-                                    info.add_error_string(format!(
-                                        "can't determine how to check the existance of {:?}",
-                                        media_url
-                                    ));
-                                }
-                            };
-                        };
-                    };
-                    // check that the IsPlatable flag is valid
-                    if page.resolved_listitem.is_some() {
-                        if let Some(sub_content_from_parent) = info.sub_content_from_parent {
-                            if !sub_content_from_parent.listitem.is_playable() {
-                                info.add_error_string("the data is not marked as playable by one of it parent, but it contain a resolved listitem".to_string());
-                            };
-                        };
-                    } else {
-                        if let Some(sub_content_from_parent) = info.sub_content_from_parent {
-                            if sub_content_from_parent.listitem.is_playable() {
-                                info.add_error_string("the data is marked as playable by one of it parent, but doesn't contain a resolved listitem".to_string());
-                            };
-                        };
-                    };
-                    ()
-                },
-                |_, _| false,
-                keep_going,
-                progress_bar,
-                jobs,
-            )
+    let result = if let Some(ref sub_argument) = app_argument.sub_command {
+        match sub_argument.command_name.as_str() {
+            "check" => do_check(app_argument.clone(), *sub_argument.clone(), option),
+            _ => panic!("an unexpected sub command was found (this is a bug)")
         }
+    } else {
+        println!("no sub-command given");
+        return ExitCode::FAILURE;
+    };
+    /*let result = match app_argument.subcommand() {
+        ("check", Some(check_argument)) => do_check(app_argument, check_argument, option),
         _ => {
             println!("no sub-command given");
             return ExitCode::FAILURE;
         }
-    };
+    };*/
 
     //TODO: pretty print
     if result.len() > 0 {
