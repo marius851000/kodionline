@@ -19,7 +19,7 @@ pub fn do_check(_app_argument: AppArgument, check_argument: AppArgument, option:
                     //TODO: check other referenced content, and make look help look exactly what is wrong
                     if let Some(media_url) = &resolved_listitem.path {
                         if media_url.starts_with("http://")
-                            | media_url.starts_with("http://")
+                            | media_url.starts_with("https://")
                         {
                             let resp = client.clone().get(media_url).send().unwrap();
                             match resp.status() {
