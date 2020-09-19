@@ -128,12 +128,14 @@ impl SpawnNewThreadData {
 fn kodi_recurse_inner_thread<
     'a,
     T: 'static + Clone + Send,
-    F: 'static + Clone + Fn(&mut RecurseInfo, T) -> Option<T> + Clone + Send,
     C: 'static + Fn(&mut RecurseInfo, &T) -> bool + Clone + Send,
+    F: 'static + Clone + Fn(&mut RecurseInfo, &T) -> Option<T> + Clone + Send,
+    P: 'static + Fn(&mut RecurseInfo, &T) -> () + Clone + Send,
 >(
     kodi: Arc<Kodi>,
     func: F,
     skip_this_and_children: C,
+    post_child: P,
     parent: Option<(Page, PathAccessData)>,
     access: PathAccessData,
     data: T,
@@ -141,7 +143,7 @@ fn kodi_recurse_inner_thread<
     have_decremented: Arc<AtomicBool>,
     keep_going: bool,
     sub_content_from_parent: Option<SubContent>,
-) {
+) -> bool {
     let (parent_page, parent_access) = match parent {
         Some((p, a)) => (Some(p), Some(a)),
         None => (None, None),
@@ -160,7 +162,7 @@ fn kodi_recurse_inner_thread<
             );
             spawn_thread_data.increment_finished_task();
             spawn_thread_data.decrement_worker();
-            return;
+            return false;
         }
     };
 
@@ -182,10 +184,10 @@ fn kodi_recurse_inner_thread<
         spawn_thread_data.decrement_worker();
         spawn_thread_data.increment_finished_task();
         have_decremented.store(true, Ordering::Relaxed);
-        return;
+        return true;
     }
 
-    let func_result = func(&mut info, data);
+    let func_result = func(&mut info, &data);
 
     for error in info.errors.drain(..) {
         spawn_thread_data.add_error(error, keep_going);
@@ -198,12 +200,15 @@ fn kodi_recurse_inner_thread<
 
     let data_for_child = match func_result {
         Some(v) => v,
-        None => return,
+        None => return false,
     };
+
     //TODO: do not spawn more than enought active thread
     let mut threads: Vec<(JoinHandle<_>, Arc<AtomicBool>, PathAccessData)> = Vec::new();
 
     spawn_thread_data.add_task(actual_page.sub_content.len() as u64);
+
+    let mut all_child_finished = true;
 
     for sub_content in &actual_page.sub_content {
         let last_one_possible = spawn_thread_data.wait_to_spawn_child_then_increment_worker();
@@ -216,7 +221,8 @@ fn kodi_recurse_inner_thread<
         let child_access_log = child_access.clone();
         let kodi_cloned = kodi.clone();
         let func_cloned = func.clone();
-        let skip_this_and_children = skip_this_and_children.clone();
+        let skip_this_and_children_cloned = skip_this_and_children.clone();
+        let post_child_cloned = post_child.clone();
         let spawn_thread_data_cloned = spawn_thread_data.clone();
         let child_have_decrement = Arc::new(AtomicBool::new(false));
         let child_have_decrement_cloned = child_have_decrement.clone();
@@ -227,7 +233,8 @@ fn kodi_recurse_inner_thread<
             kodi_recurse_inner_thread(
                 kodi_cloned,
                 func_cloned,
-                skip_this_and_children,
+                skip_this_and_children_cloned,
+                post_child_cloned,
                 Some((parent_page, parent_access)),
                 child_access,
                 child_data_cloned,
@@ -240,15 +247,21 @@ fn kodi_recurse_inner_thread<
 
         // ensure at least one thread is working
         if last_one_possible {
-            if let Err(_err) = handle.join() {
-                if child_have_decrement.fetch_or(false, Ordering::Relaxed) == false {
-                    spawn_thread_data.decrement_worker();
-                    spawn_thread_data.increment_finished_task();
-                };
-                spawn_thread_data.add_error(
-                    RecurseReport::ThreadPanicked(child_access_log, Some(access.clone())),
-                    keep_going,
-                );
+            match handle.join() {
+                Err(_err) => {
+                    if child_have_decrement.fetch_or(false, Ordering::Relaxed) == false {
+                        spawn_thread_data.decrement_worker();
+                        spawn_thread_data.increment_finished_task();
+                    };
+                    spawn_thread_data.add_error(
+                        RecurseReport::ThreadPanicked(child_access_log, Some(access.clone())),
+                        keep_going,
+                    );
+                    all_child_finished = false;
+                },
+                Ok(finished_sucessfully) => if all_child_finished {
+                    all_child_finished = finished_sucessfully
+                }
             }
         } else {
             threads.push((handle, child_have_decrement, child_access_log));
@@ -260,30 +273,48 @@ fn kodi_recurse_inner_thread<
     }
 
     for thread in threads.drain(..) {
-        if let Err(_) = thread.0.join() {
-            if thread.1.fetch_or(false, Ordering::Relaxed) == false {
-                spawn_thread_data.decrement_worker();
-                spawn_thread_data.increment_finished_task();
-            };
-            spawn_thread_data.add_error(
-                RecurseReport::ThreadPanicked(thread.2, Some(access.clone())),
-                keep_going,
-            );
+        match thread.0.join() {
+            Err(_err) => {
+                if thread.1.fetch_or(false, Ordering::Relaxed) == false {
+                    spawn_thread_data.decrement_worker();
+                    spawn_thread_data.increment_finished_task();
+                };
+                spawn_thread_data.add_error(
+                    RecurseReport::ThreadPanicked(thread.2, Some(access.clone())),
+                    keep_going,
+                );
+                all_child_finished = false;
+            },
+            Ok(finished_sucessfully) => if all_child_finished {
+                all_child_finished = finished_sucessfully
+            }
         }
     }
+
+    if all_child_finished {
+        post_child(&mut info, &data);
+
+        for error in info.errors.drain(..) {
+            spawn_thread_data.add_error(error, keep_going);
+        }
+    };
+
+    all_child_finished
 }
 
 //TODO: single thread implementation
 pub fn kodi_recurse_par<
     'a,
     T: 'static + Clone + Send,
-    F: 'static + Fn(&mut RecurseInfo, T) -> Option<T> + Clone + Send,
     C: 'static + Fn(&mut RecurseInfo, &T) -> bool + Clone + Send,
+    F: 'static + Fn(&mut RecurseInfo, &T) -> Option<T> + Clone + Send,
+    P: 'static + Fn(&mut RecurseInfo, &T) -> () + Clone + Send,
 >(
     mut option: RecurseOption,
     data: T,
     func: F,
     skip_this_and_children: C,
+    post_child: P,
 ) -> Vec<RecurseReport> {
     if option.thread_nb == 0 {
         error!("kodi_recurse_par require to have at least one active thread ! Making use of 1 thread instead of 0.");
@@ -327,6 +358,7 @@ pub fn kodi_recurse_par<
             kodi,
             func,
             skip_this_and_children,
+            post_child,
             parent_data,
             access_cloned,
             data,

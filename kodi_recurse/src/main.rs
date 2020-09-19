@@ -210,7 +210,7 @@ fn main() -> ExitCode {
             }
         },
         None => 1,
-    };
+    }; //TODO: default to one for mirror (assuming the majority of time is took by fetching)
 
     let plugin_path = app_argument.value_of("path").unwrap();
 

@@ -12,7 +12,7 @@ pub fn do_check(
     //TODO: more control on verbosity
     let check_media = check_argument.is_present("check-media");
     let client = Arc::new(ClientBuilder::new().referer(false).build().unwrap());
-    kodi_recurse_par::<(), _, _>(
+    kodi_recurse_par::<(), _, _, _>(
         option,
         (),
         move |info, _| {
@@ -65,5 +65,6 @@ pub fn do_check(
             Some(())
         },
         |_, _| false,
+        |_, _| (),
     )
 }

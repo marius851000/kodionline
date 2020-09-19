@@ -53,7 +53,7 @@ fn encode_path(path: String) -> String {
     path
 }
 
-pub fn fetch_media(save_path: PathBuf, media_url: &str) -> Result<(), ReportBuilder> {
+fn fetch_media(save_path: PathBuf, media_url: &str) -> Result<(), ReportBuilder> {
     let client = ClientBuilder::new().referer(false).build().unwrap();
     if media_url.starts_with("http://") | media_url.starts_with("https://") {
         let resp = client.get(media_url).send().unwrap();
@@ -91,12 +91,44 @@ pub fn fetch_media(save_path: PathBuf, media_url: &str) -> Result<(), ReportBuil
     }
     Ok(())
 }
+
+fn get_child_dir(
+    parent_data: &ParentInfo,
+    sub_content_from_parent: Option<&SubContent>,
+) -> Result<PathBuf, ReportBuilder> {
+    let mut this_dir = parent_data.parent_path.clone();
+    if !parent_data.is_top_level {
+        if let Some(sub_content) = sub_content_from_parent {
+            let this_subfolder_name: String =
+                encode_path(match get_label_from_listitem(&sub_content.listitem) {
+                    Some(value) => value,
+                    None => {
+                        return Err(ReportBuilder::new_error(
+                            "can't find a label for this element, so can't save to a folder"
+                                .to_string(),
+                        )
+                        .add_tip(format!("listitem is : {:?}", sub_content.listitem)))
+                    }
+                });
+            this_dir.push(this_subfolder_name);
+        } else {
+            return Err(ReportBuilder::new_error("can't get the sub content from the parent, even thought this isn't declared as a children".to_string())
+                .set_internal_error(true));
+        }
+    }
+    Ok(this_dir)
+}
+pub fn get_success_path(mut folder: PathBuf) -> PathBuf {
+    folder.push(".success");
+    return folder;
+}
+
 pub fn do_mirror(
     app_argument: AppArgument,
     mirror_argument: AppArgument,
     option: RecurseOption,
 ) -> Vec<RecurseReport> {
-    kodi_recurse_par::<ParentInfo, _, _>(
+    kodi_recurse_par::<ParentInfo, _, _, _>(
         option,
         ParentInfo {
             parent_path: PathBuf::from(mirror_argument.value_of("dest-path").unwrap()),
@@ -159,30 +191,7 @@ pub fn do_mirror(
                 })
             };
             // step 1: find the destination folder
-            let mut this_dir = parent_data.parent_path.clone();
-            if !parent_data.is_top_level {
-                if let Some(sub_content) = info.get_sub_content_from_parent() {
-                    let this_subfolder_name: String = encode_path(
-                        match get_label_from_listitem(&sub_content.listitem) {
-                            Some(value) => value,
-                            None => {
-                                info.add_report(
-                                ReportBuilder::new_error("can't find a label for this element, so can't save to a folder".to_string())
-                                    .add_tip(format!("listitem is : {:?}", sub_content.listitem))
-                            );
-                                return None;
-                            }
-                        },
-                    );
-                    this_dir.push(this_subfolder_name);
-                } else {
-                    info.add_report(
-                        ReportBuilder::new_error("can't get the sub content from the parent, even thought this isn't declared as a children".to_string())
-                            .set_internal_error(true)
-                    );
-                    return None;
-                }
-            }
+            let this_dir = get_child_dir(&parent_data, info.get_sub_content_from_parent()).unwrap(); //TODO: get rid of unwrap
 
             // step 2: write the data
             match DirBuilder::new().create(this_dir.clone()) {
@@ -241,6 +250,17 @@ pub fn do_mirror(
                 is_top_level: false,
             })
         },
-        |_, _| false, //TODO: skip already existing folder (TODO: maybe a phase after all child have been fetched ?)
+        |info, parent_data| {
+            let child_path =
+                get_child_dir(&parent_data, info.get_sub_content_from_parent()).unwrap(); //TODO: get rid of unwrap
+            let success_path = get_success_path(child_path);
+            success_path.exists()
+        },
+        |info, parent_data| {
+            let child_path =
+                get_child_dir(&parent_data, info.get_sub_content_from_parent()).unwrap(); //TODO: get rid of unwrap
+            let success_path = get_success_path(child_path);
+            File::create(success_path).unwrap();
+        },
     )
 }
