@@ -59,7 +59,12 @@ fn fetch_media(save_path: PathBuf, media_url: &str) -> Result<(), ReportBuilder>
         let resp = client.get(media_url).send().unwrap();
         match resp.status() {
             StatusCode::OK => {
-                let bytes = resp.bytes().unwrap(); //TODO: get rid of unwrap
+                let bytes = match resp.bytes() {
+                    Ok(v) => v,
+                    Err(err) => return Err(ReportBuilder::new_error(format!(
+                        "can't download the file at {}", media_url
+                    )).add_tip(format!("the error returned by resp.bytes() is {:?}", err)))
+                }; //TODO: get rid of unwrap
                 let mut save_file = match File::create(&save_path) {
                     Ok(value) => value,
                     Err(err) => {
@@ -242,7 +247,13 @@ pub fn do_mirror(
             if let SavePossibility::Media(media_data) = to_save {
                 let mut media_path = this_dir.clone();
                 media_path.push(media_data.media_file_name);
-                fetch_media(media_path, &media_data.media_url).unwrap(); //TODO: get rid of unwrap
+                match fetch_media(media_path, &media_data.media_url) {
+                    Ok(()) => (),
+                    Err(mut report_error) => {
+                        info.add_report(report_error.add_tip("happened while downloading the main media file".to_string()));
+                        return None
+                    }
+                };
             };
 
             Some(ParentInfo {
