@@ -202,6 +202,7 @@ impl Kodi {
                 "/gnu",
                 "/usr",
                 "/bin",
+                "/etc",
                 self.global_tempdir.path().to_str().unwrap(),
             ] {
                 //TODO: whereis self.kodi_config_path
@@ -221,6 +222,7 @@ impl Kodi {
                 .arg("--bind")
                 .arg(result_dir_str)
                 .arg(result_dir_str);
+            bwrap_invoke = bwrap_invoke.arg("--unshare-all").arg("--share-net");
             bwrap_invoke.arg(&self.python_command)
         } else {
             Exec::cmd(&self.python_command)
