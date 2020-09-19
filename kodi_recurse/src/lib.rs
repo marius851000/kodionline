@@ -15,3 +15,6 @@ pub use argument::AppArgument;
 
 mod check;
 pub use check::do_check;
+
+mod mirror;
+pub use mirror::do_mirror;

@@ -4,12 +4,13 @@ use clap::{App, Arg, SubCommand};
 use kodi_recurse::AppArgument;
 use kodi_rust::{Kodi, PathAccessData, Setting};
 
+use console::style;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::process::ExitCode;
-use console::style;
 
 use kodi_recurse::do_check;
+use kodi_recurse::do_mirror;
 use kodi_recurse::RecurseOption;
 
 use indicatif::ProgressBar;
@@ -78,6 +79,18 @@ fn main() -> ExitCode {
                     "check the media in resolved listitem. Will produce more network request.",
                 )),
         )
+        .subcommand(
+            SubCommand::with_name("mirror")
+                .about("mirror a path and their child, recursively")
+                .arg(
+                    Arg::with_name("dest-path")
+                        .long("dest-path")
+                        .short("d")
+                        .help("the destination folder")
+                        .takes_value(true)
+                        .required(true)
+                )
+            )
         .get_matches();
 
     let mut setting = match app_m.value_of("config") {
@@ -142,7 +155,7 @@ fn main() -> ExitCode {
                 if app_m.is_present(param) {
                     b.insert(param.to_string());
                 };
-            };
+            }
             b
         },
         sub_command: match app_m.subcommand() {
@@ -156,6 +169,26 @@ fn main() -> ExitCode {
                     if let Some(check_media) = check_m.value_of("check-media") {
                         a.insert("check-media".to_string(), check_media.to_string());
                     };
+                    a
+                },
+                sub_command: None,
+            })),
+            ("mirror", Some(mirror_m)) => Some(Box::new(AppArgument {
+                command_name: "mirror".into(),
+                args_order: vec!["dest-path"],
+                short_version: {
+                    let mut h = HashMap::new();
+                    h.insert("dest-path", "d");
+                    h
+                },
+                bool_set: HashSet::new(),
+                args: {
+                    let mut a = HashMap::new();
+                    for key in &["dest-path"] {
+                        if let Some(value) = mirror_m.value_of(key) {
+                            a.insert(key.to_string(), value.to_string());
+                        };
+                    }
                     a
                 },
                 sub_command: None,
@@ -206,7 +239,8 @@ fn main() -> ExitCode {
             None,
             setting.default_user_config.clone(),
         ),
-        top_parent: app_argument.value_of("parent-path")
+        top_parent: app_argument
+            .value_of("parent-path")
             .map(move |x| PathAccessData::new(x.to_string(), None, setting.default_user_config)),
         keep_going: app_argument.is_present("keep-going"),
         progress_bar,
@@ -218,7 +252,8 @@ fn main() -> ExitCode {
     let result = if let Some(ref sub_argument) = app_argument.sub_command {
         match sub_argument.command_name.as_str() {
             "check" => do_check(app_argument.clone(), *sub_argument.clone(), option),
-            _ => panic!("an unexpected sub command was found (this is a bug)")
+            "mirror" => do_mirror(app_argument.clone(), *sub_argument.clone(), option),
+            _ => panic!("an unexpected sub command was found (this is a bug)"),
         }
     } else {
         println!("no sub-command given");
@@ -236,7 +271,10 @@ fn main() -> ExitCode {
     };
 
     if result.len() > 1 {
-        println!("there are {} errors.", style(result.len().to_string()).red());
+        println!(
+            "there are {} errors.",
+            style(result.len().to_string()).red()
+        );
     } else if result.len() == 1 {
         println!("there is {} error.", style("one").red());
     } else {

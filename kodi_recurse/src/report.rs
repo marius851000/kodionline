@@ -45,8 +45,8 @@ impl ReportKind {
 #[derive(Debug, Clone)]
 pub enum RecurseReport {
     CalledReport(PathAccessData, Option<PathAccessData>, ReportBuilder), //child, parent, message
-    ThreadPanicked(PathAccessData, Option<PathAccessData>),       //child, parent
-    KodiCallError(PathAccessData, Arc<KodiError>),                //child, error
+    ThreadPanicked(PathAccessData, Option<PathAccessData>),              //child, parent
+    KodiCallError(PathAccessData, Arc<KodiError>),                       //child, error
 }
 
 impl RecurseReport {
@@ -74,7 +74,9 @@ impl RecurseReport {
     pub fn get_summary_text(&self) -> String {
         match self {
             RecurseReport::CalledReport(_, _, report) => report.summary.clone(),
-            RecurseReport::KodiCallError(_, kodi_error) => format!("can't get data from a plugin: {}", kodi_error),
+            RecurseReport::KodiCallError(_, kodi_error) => {
+                format!("can't get data from a plugin: {}", kodi_error)
+            }
             RecurseReport::ThreadPanicked(_, _) => "a thread panicked unexpectingly".into(),
         }
     }
@@ -96,7 +98,7 @@ impl RecurseReport {
         if let Self::CalledReport(_, _, report) = self {
             for tip in &report.tips {
                 tips.push(tip.clone());
-            };
+            }
         };
 
         if let Self::KodiCallError(_, kodi_err) = self {
@@ -237,7 +239,7 @@ impl RecurseReport {
         if let Self::CalledReport(_, _, report) = self {
             for log in &report.logs {
                 result.push(log.clone());
-            };
+            }
         };
 
         result

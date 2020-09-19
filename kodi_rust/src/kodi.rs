@@ -1,11 +1,11 @@
 use std::error::Error;
 use std::fmt;
 use std::fs::File;
+use std::include_bytes;
 use std::io;
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use std::include_bytes;
-use std::io::Write;
 
 use subprocess::{Exec, ExitStatus, PopenError, Redirection};
 
@@ -33,7 +33,11 @@ pub enum KodiError {
 impl fmt::Display for KodiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NonZeroResult(_, exit_status) => write!(f, "python returned a non zero value (it probably crashed, with the exit status {:?})", exit_status), //TODO: maybe better logging
+            Self::NonZeroResult(_, exit_status) => write!(
+                f,
+                "python returned a non zero value (it probably crashed, with the exit status {:?})",
+                exit_status
+            ), //TODO: maybe better logging
             Self::CantCreateProcess(_) => write!(f, "failed to invoke the child process"),
             Self::CantCreateTemporyDir(_) => {
                 write!(f, "internal error: can't create a tempory folder")
@@ -107,7 +111,7 @@ impl Kodi {
             catch_stdout: true,
             sandbox_call: true,
             global_tempdir,
-            allowed_path: Vec::new()
+            allowed_path: Vec::new(),
         }
     }
 
@@ -129,7 +133,12 @@ impl Kodi {
 
     fn get_arguments(&self, tempory_file: &str, access: &PathAccessData) -> Vec<String> {
         let mut result = vec![
-            self.global_tempdir.path().join("kodi_interface.py").to_str().unwrap().to_string(), //TODO: embed in bin, extract to tmp
+            self.global_tempdir
+                .path()
+                .join("kodi_interface.py")
+                .to_str()
+                .unwrap()
+                .to_string(), //TODO: embed in bin, extract to tmp
             self.kodi_config_path.clone(),
             access.path.clone(),
             tempory_file.into(),
@@ -193,40 +202,52 @@ impl Kodi {
                 "/gnu",
                 "/usr",
                 "/bin",
-                self.global_tempdir.path().to_str().unwrap()
-            ] {//TODO: whereis self.kodi_config_path
+                self.global_tempdir.path().to_str().unwrap(),
+            ] {
+                //TODO: whereis self.kodi_config_path
                 //TODO: permit to configure this in the configuration file
                 bwrap_invoke = bwrap_invoke.arg("--ro-bind-try").arg(folder).arg(folder);
-            };
+            }
             let python_path = std::env::var("PYTHONPATH").unwrap_or("".to_string());
             let python_path_splited = python_path.split(":");
             for folder in python_path_splited {
                 bwrap_invoke = bwrap_invoke.arg("--ro-bind-try").arg(folder).arg(folder);
-            };
+            }
             for folder in &self.allowed_path {
                 bwrap_invoke = bwrap_invoke.arg("--ro-bind-try").arg(folder).arg(folder);
-            };
+            }
             let result_dir_str = result_dir.to_str().unwrap();
-            bwrap_invoke = bwrap_invoke.arg("--bind").arg(result_dir_str).arg(result_dir_str);
+            bwrap_invoke = bwrap_invoke
+                .arg("--bind")
+                .arg(result_dir_str)
+                .arg(result_dir_str);
             bwrap_invoke.arg(&self.python_command)
         } else {
             Exec::cmd(&self.python_command)
         };
 
         if self.catch_stdout {
-            to_invoke = to_invoke.stdout(Redirection::Pipe)
+            to_invoke = to_invoke
+                .stdout(Redirection::Pipe)
                 .stderr(Redirection::Merge);
         };
 
         for arg in arguments {
             to_invoke = to_invoke.arg(arg);
-        };
+        }
 
         let (stdout, exit_status) = if self.catch_stdout {
-            let captured = to_invoke.capture().map_err(|err| KodiError::CantCreateProcess(err))?;
+            let captured = to_invoke
+                .capture()
+                .map_err(|err| KodiError::CantCreateProcess(err))?;
             (Some(captured.stdout_str()), captured.exit_status)
         } else {
-            (None, to_invoke.join().map_err(|err| KodiError::CantCreateProcess(err))?)
+            (
+                None,
+                to_invoke
+                    .join()
+                    .map_err(|err| KodiError::CantCreateProcess(err))?,
+            )
         };
 
         if exit_status != ExitStatus::Exited(0) {

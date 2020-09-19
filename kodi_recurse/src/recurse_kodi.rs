@@ -1,11 +1,11 @@
 use crate::report::RecurseReport;
-use crate::ReportBuilder;
-use crate::RecurseOption;
 use crate::AppArgument;
+use crate::RecurseOption;
+use crate::ReportBuilder;
 
+use indicatif::ProgressBar;
 use kodi_rust::data::{KodiResult, Page, SubContent};
 use kodi_rust::{Kodi, PathAccessData};
-use indicatif::ProgressBar;
 
 use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc, Condvar, Mutex, RwLock};
 use std::thread;
@@ -48,7 +48,7 @@ impl<'a> RecurseInfo<'a> {
         self.errors.push(RecurseReport::CalledReport(
             self.access.clone(),
             self.parent_access.map(|x| x.clone()),
-            report
+            report,
         ));
     }
 }
@@ -128,7 +128,7 @@ impl SpawnNewThreadData {
 fn kodi_recurse_inner_thread<
     'a,
     T: 'static + Clone + Send,
-    F: 'static + Clone + Fn(&mut RecurseInfo, T) -> T + Clone + Send,
+    F: 'static + Clone + Fn(&mut RecurseInfo, T) -> Option<T> + Clone + Send,
     C: 'static + Fn(&mut RecurseInfo, &T) -> bool + Clone + Send,
 >(
     kodi: Arc<Kodi>,
@@ -140,6 +140,7 @@ fn kodi_recurse_inner_thread<
     spawn_thread_data: Arc<SpawnNewThreadData>,
     have_decremented: Arc<AtomicBool>,
     keep_going: bool,
+    sub_content_from_parent: Option<SubContent>,
 ) {
     let (parent_page, parent_access) = match parent {
         Some((p, a)) => (Some(p), Some(a)),
@@ -147,7 +148,7 @@ fn kodi_recurse_inner_thread<
     };
 
     //parent, access, data, Fn(Option<Page>, PathAccessData, T)
-    let mut actual_page = match kodi.invoke_sandbox(&access) {
+    let actual_page = match kodi.invoke_sandbox(&access) {
         Ok(result) => match result {
             KodiResult::Content(p) => p,
             other => panic!("can't use {:?} in a recursive context", other), //TODO: remove this panic
@@ -163,22 +164,9 @@ fn kodi_recurse_inner_thread<
         }
     };
 
-    let mut sub_content_from_parent = None;
-
-    if let Some(resolved_listitem) = actual_page.resolved_listitem.as_mut() {
-        if let Some(parent_page) = parent_page.as_ref() {
-            for parent_sub_content in &parent_page.sub_content {
-                if parent_sub_content.url == access.path {
-                    sub_content_from_parent = Some(parent_sub_content);
-                    resolved_listitem.extend(parent_sub_content.listitem.clone());
-                };
-            }
-        };
-    };
-
     let mut info = RecurseInfo {
         page: &actual_page,
-        sub_content_from_parent,
+        sub_content_from_parent: sub_content_from_parent.as_ref(),
         access: &access,
         parent_access: parent_access.as_ref(),
         errors: Vec::new(),
@@ -197,7 +185,7 @@ fn kodi_recurse_inner_thread<
         return;
     }
 
-    let data_for_child = func(&mut info, data);
+    let func_result = func(&mut info, data);
 
     for error in info.errors.drain(..) {
         spawn_thread_data.add_error(error, keep_going);
@@ -208,6 +196,10 @@ fn kodi_recurse_inner_thread<
     spawn_thread_data.increment_finished_task();
     have_decremented.store(true, Ordering::Relaxed);
 
+    let data_for_child = match func_result {
+        Some(v) => v,
+        None => return,
+    };
     //TODO: do not spawn more than enought active thread
     let mut threads: Vec<(JoinHandle<_>, Arc<AtomicBool>, PathAccessData)> = Vec::new();
 
@@ -229,6 +221,7 @@ fn kodi_recurse_inner_thread<
         let child_have_decrement = Arc::new(AtomicBool::new(false));
         let child_have_decrement_cloned = child_have_decrement.clone();
         let keep_going_cloned = keep_going;
+        let sub_content_from_parent_cloned = sub_content.clone();
 
         let handle = thread::spawn(move || {
             kodi_recurse_inner_thread(
@@ -241,6 +234,7 @@ fn kodi_recurse_inner_thread<
                 spawn_thread_data_cloned,
                 child_have_decrement_cloned,
                 keep_going_cloned,
+                Some(sub_content_from_parent_cloned),
             )
         });
 
@@ -283,7 +277,7 @@ fn kodi_recurse_inner_thread<
 pub fn kodi_recurse_par<
     'a,
     T: 'static + Clone + Send,
-    F: 'static + Fn(&mut RecurseInfo, T) -> T + Clone + Send,
+    F: 'static + Fn(&mut RecurseInfo, T) -> Option<T> + Clone + Send,
     C: 'static + Fn(&mut RecurseInfo, &T) -> bool + Clone + Send,
 >(
     mut option: RecurseOption,
@@ -318,7 +312,7 @@ pub fn kodi_recurse_par<
                 Err(e) => {
                     spawn_thread_data.finish();
                     return vec![RecurseReport::KodiCallError(parent_access, Arc::new(e))];
-                },
+                }
             },
             parent_access,
         )),
@@ -339,14 +333,16 @@ pub fn kodi_recurse_par<
             spawn_thread_data_cloned,
             Arc::new(AtomicBool::new(false)),
             keep_going_cloned,
+            None,
         )
     });
 
     match original_thread.join() {
         Ok(_) => (),
-        Err(_) => {
-            spawn_thread_data.add_error(RecurseReport::ThreadPanicked(option.top_access, None), option.keep_going)
-        }
+        Err(_) => spawn_thread_data.add_error(
+            RecurseReport::ThreadPanicked(option.top_access, None),
+            option.keep_going,
+        ),
     }
 
     spawn_thread_data.finish();

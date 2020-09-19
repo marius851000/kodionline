@@ -1,7 +1,7 @@
-use kodi_rust::PathAccessData;
+use crate::AppArgument;
 use indicatif::ProgressBar;
 use kodi_rust::Kodi;
-use crate::AppArgument;
+use kodi_rust::PathAccessData;
 
 pub struct RecurseOption {
     pub kodi: Kodi,

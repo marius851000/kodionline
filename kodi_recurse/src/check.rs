@@ -1,10 +1,14 @@
-use crate::{RecurseOption, AppArgument, RecurseReport};
-use reqwest::{blocking::ClientBuilder, StatusCode};
-use std::sync::Arc;
 use crate::kodi_recurse_par;
+use crate::{AppArgument, RecurseOption, RecurseReport};
+use reqwest::{blocking::ClientBuilder, StatusCode};
 use std::fs::File;
+use std::sync::Arc;
 
-pub fn do_check(_app_argument: AppArgument, check_argument: AppArgument, option: RecurseOption) -> Vec<RecurseReport> {
+pub fn do_check(
+    _app_argument: AppArgument,
+    check_argument: AppArgument,
+    option: RecurseOption,
+) -> Vec<RecurseReport> {
     //TODO: more control on verbosity
     let check_media = check_argument.is_present("check-media");
     let client = Arc::new(ClientBuilder::new().referer(false).build().unwrap());
@@ -18,9 +22,7 @@ pub fn do_check(_app_argument: AppArgument, check_argument: AppArgument, option:
                     // check if the resolved media exist
                     //TODO: check other referenced content, and make look help look exactly what is wrong
                     if let Some(media_url) = &resolved_listitem.path {
-                        if media_url.starts_with("http://")
-                            | media_url.starts_with("https://")
-                        {
+                        if media_url.starts_with("http://") | media_url.starts_with("https://") {
                             let resp = client.clone().get(media_url).send().unwrap();
                             match resp.status() {
                                 StatusCode::OK => (),
@@ -60,7 +62,7 @@ pub fn do_check(_app_argument: AppArgument, check_argument: AppArgument, option:
                     };
                 };
             };
-            ()
+            Some(())
         },
         |_, _| false,
     )
