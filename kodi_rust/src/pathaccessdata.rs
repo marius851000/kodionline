@@ -31,7 +31,7 @@ impl PathAccessData {
     pub fn new(path: String, input: Option<&str>, config: UserConfig) -> Self {
         PathAccessData {
             path,
-            input: input.map(|x| decode_input(x)).unwrap_or_else(|| Vec::new()),
+            input: input.map(|x| decode_input(x)).unwrap_or_else(Vec::new),
             config,
         }
     }

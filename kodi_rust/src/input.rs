@@ -1,7 +1,7 @@
 use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
 
 pub fn decode_input(inputs_option: &str) -> Vec<String> {
-    if inputs_option.len() == 0 {
+    if inputs_option.is_empty() {
         Vec::new()
     } else {
         let mut result = Vec::new();

@@ -32,7 +32,7 @@ pub fn do_check(
                                 )),
                             };
                         }
-                        if media_url.starts_with("/") {
+                        if media_url.starts_with('/') {
                             if let Err(err) = File::open(media_url) {
                                 info.add_error_string(format!(
                                     "can't get the local media at {:?}: {:?}",

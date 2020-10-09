@@ -260,7 +260,7 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     };
 
-    if result.len() > 0 {
+    if !result.is_empty() {
         println!("error happened while recursing:");
         if !have_progress_bar {
             for r in &result {

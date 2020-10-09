@@ -84,7 +84,7 @@ pub fn render_plugin(
 
     let mut input = input
         .map(|x| decode_input(&x))
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_else(Vec::new);
 
     if let Some(value) = additional_input {
         input.push(value)
@@ -103,7 +103,7 @@ pub fn render_plugin(
     };
 
     let parent_access = PathAccessData::try_create_from_url(
-        parent_path.clone(),
+        parent_path,
         parent_input.map(|x| x.as_str()),
         final_config,
     );
@@ -284,27 +284,23 @@ pub fn render_plugin(
                                             }
                                         }
 
-                                        @if sub_content.listitem.is_playable() {
-                                            @if plugin_type == "audio" {
-                                                (contain_playable_element = true; "")
-                                                br {}
-                                                audio class="audiopreview" audiopreview_nb=(loop_nb.to_string()) preload=(if loop_nb == 0 { "auto" } else { "none" }) controls="true" {
-                                                    source src = (get_media_link_subcontent(
-                                                        &sub_content,
-                                                        &current_access_without_static,
-                                                    )) {}
-                                                }
+                                        @if sub_content.listitem.is_playable() && plugin_type == "audio" {
+                                            (contain_playable_element = true; "")
+                                            br {}
+                                            audio class="audiopreview" audiopreview_nb=(loop_nb.to_string()) preload=(if loop_nb == 0 { "auto" } else { "none" }) controls="true" {
+                                                source src = (get_media_link_subcontent(
+                                                    &sub_content,
+                                                    &current_access_without_static,
+                                                )) {}
                                             }
                                         }
                                     }
                                 }
                             }
 
-                            @if contain_playable_element {
-                                @if plugin_type == "audio" {
-                                    button id = "play_all" { "play all music syncronously (take care, may be loud and/or laggy)"}
-                                    script type="text/javascript" src="/static/musicplayer.js" {}
-                                }
+                            @if contain_playable_element && plugin_type == "audio" {
+                                button id = "play_all" { "play all music syncronously (take care, may be loud and/or laggy)"}
+                                script type="text/javascript" src="/static/musicplayer.js" {}
                             }
                         ),
                         Some(footer),

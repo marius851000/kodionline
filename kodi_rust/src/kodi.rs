@@ -211,8 +211,8 @@ impl Kodi {
                 //TODO: permit to configure this in the configuration file
                 bwrap_invoke = bwrap_invoke.arg("--ro-bind-try").arg(folder).arg(folder);
             }
-            let python_path = std::env::var("PYTHONPATH").unwrap_or("".to_string());
-            let python_path_splited = python_path.split(":");
+            let python_path = std::env::var("PYTHONPATH").unwrap_or_else(|_| "".to_string());
+            let python_path_splited = python_path.split(':');
             for folder in python_path_splited {
                 bwrap_invoke = bwrap_invoke.arg("--ro-bind-try").arg(folder).arg(folder);
             }
@@ -243,14 +243,14 @@ impl Kodi {
         let (stdout, exit_status) = if self.catch_stdout {
             let captured = to_invoke
                 .capture()
-                .map_err(|err| KodiError::CantCreateProcess(err))?;
+                .map_err(KodiError::CantCreateProcess)?;
             (Some(captured.stdout_str()), captured.exit_status)
         } else {
             (
                 None,
                 to_invoke
                     .join()
-                    .map_err(|err| KodiError::CantCreateProcess(err))?,
+                    .map_err(KodiError::CantCreateProcess)?,
             )
         };
 

@@ -36,7 +36,7 @@ struct ParentInfo {
 }
 
 fn get_extension(media_path: &str) -> Option<String> {
-    let last_splited_by_dot = media_path.split(".").last()?;
+    let last_splited_by_dot = media_path.split('.').last()?;
     if last_splited_by_dot.len() > 5 {
         None
     } else {
@@ -79,7 +79,7 @@ fn fetch_media(save_path: PathBuf, media_url: &str) -> Result<(), ReportBuilder>
                         .add_tip(format!("the error returned by File::create is {:?}", err)))
                     }
                 };
-                save_file.write(&bytes).unwrap(); //TODO: get rid of unwrap
+                save_file.write_all(&bytes).unwrap(); //TODO: get rid of unwrap
             }
             err_code => {
                 return Err(ReportBuilder::new_error(format!(
@@ -239,7 +239,7 @@ pub fn do_mirror(
                 Ok(()) => (),
                 Err(err) => {
                     info.add_report(
-                        ReportBuilder::new_error(format!("can't export the data to a json file"))
+                        ReportBuilder::new_error("can't export the data to a json file".to_string())
                             .set_internal_error(true)
                             .add_tip(format!("the path in question is {:?}", this_data_path))
                             .add_tip(format!("error of serde_json::to_writer_pretty : {:?}", err)),
