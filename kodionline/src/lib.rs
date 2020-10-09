@@ -2,9 +2,8 @@
 #[macro_use]
 extern crate rocket;
 
-use maud::{PreEscaped, DOCTYPE, Markup, html};
-use kodi_rust::encode_url;
-
+use kodi_rust::{input::encode_input, urlencode, PathAccessData};
+use maud::{html, Markup, PreEscaped, DOCTYPE};
 
 pub mod plugin_page;
 
@@ -14,11 +13,44 @@ pub mod redirect_page;
 
 pub mod index_page;
 
-pub fn get_absolute_plugin_path(text: &str) -> PreEscaped<String> {
-    PreEscaped(format!("/plugin?path={}", encode_url(text)))
+pub fn get_absolute_plugin_path(
+    main: &PathAccessData,
+    parent: Option<&PathAccessData>,
+) -> PreEscaped<String> {
+    PreEscaped(format!(
+        "/plugin?path={}{}{}{}",
+        urlencode(&main.path),
+        if !main.input.is_empty() {
+            format!("&input={}", encode_input(&main.input))
+        } else {
+            String::new()
+        },
+        if !main.config.is_empty() {
+            format!("&c={}", main.config.encode_to_uri())
+        } else {
+            String::new()
+        },
+        if let Some(parent) = parent {
+            format!(
+                "&parent_path={}{}",
+                urlencode(&parent.path),
+                if !parent.input.is_empty() {
+                    format!("&parent_input={}", encode_input(&parent.input))
+                } else {
+                    String::new()
+                },
+            )
+        } else {
+            String::new()
+        }
+    ))
 }
 
-pub fn format_standard_page(page_title: &str, page_content: Markup, additional_footer: Option<Markup>) -> Markup {
+pub fn format_standard_page(
+    page_title: Markup,
+    page_content: Markup,
+    additional_footer: Option<Markup>,
+) -> Markup {
     html!(
         (DOCTYPE)
         head {

@@ -1,6 +1,6 @@
 use kodi_rust::{
     data::{KodiResult, ListItem},
-    encode_url, get_sub_content_from_parent, should_serve_file, Kodi, PathAccessData, Setting,
+    encode_utf8_url, get_sub_content_from_parent, should_serve_file, Kodi, PathAccessData, Setting,
     UserConfig,
 };
 
@@ -48,7 +48,7 @@ where
                 },
             ))
         } else {
-            let encoded = encode_url(&data_url);
+            let encoded = encode_utf8_url(&data_url);
             info!(
                 "redirecting the {} at {:?} to \"{}\"",
                 category_label, access, encoded

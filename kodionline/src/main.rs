@@ -2,10 +2,10 @@
 #[macro_use]
 extern crate rocket;
 
+use kodionline::index_page::static_rocket_route_info_for_render_index;
 use kodionline::plugin_page::static_rocket_route_info_for_render_plugin;
 use kodionline::redirect_page::static_rocket_route_info_for_redirect_art;
 use kodionline::redirect_page::static_rocket_route_info_for_redirect_media;
-use kodionline::index_page::static_rocket_route_info_for_render_index;
 use rocket::config::Environment;
 use rocket_contrib::serve::StaticFiles;
 use rocket_contrib::templates::Template;

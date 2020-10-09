@@ -23,14 +23,20 @@ mod user_config;
 pub use user_config::{OverridableVec, UserConfig};
 
 // local use
-use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
+use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS, NON_ALPHANUMERIC};
 
 pub fn should_serve_file(path: &str) -> bool {
     matches!(path.chars().next(), Some('/')) || path.starts_with("plugin://")
 }
 
 static URLENCODE: AsciiSet = CONTROLS.add(b' ');
-static HTMLENCODE: AsciiSet = CONTROLS.add(b'\'').add(b'"').add(b'&').add(b'<').add(b'>');
+static HTMLENCODE: AsciiSet = CONTROLS
+    .add(b'\'')
+    .add(b'"')
+    .add(b'&')
+    .add(b'<')
+    .add(b'>')
+    .add(b'?');
 
 pub fn escape_tag(value: String) -> String {
     value
@@ -41,8 +47,12 @@ pub fn escape_tag(value: String) -> String {
         .replace("&", "&amp;") //TODO: use the library
 }
 
-pub fn encode_url(url: &str) -> String {
+pub fn encode_utf8_url(url: &str) -> String {
     utf8_percent_encode(url, &URLENCODE).to_string()
+}
+
+pub fn urlencode(to_encode: &str) -> String {
+    utf8_percent_encode(to_encode, &NON_ALPHANUMERIC).to_string()
 }
 
 pub fn extend_option<T: Clone>(source: &mut Option<T>, extender: Option<T>) {
@@ -74,7 +84,7 @@ fn test_should_serve_file() {
 
 #[test]
 fn test_encode_url() {
-    assert_eq!(encode_url("http://î h"), "http://%C3%AE%20h");
+    assert_eq!(encode_utf8_url("http://î h"), "http://%C3%AE%20h");
 }
 
 //TODO: find where to put this

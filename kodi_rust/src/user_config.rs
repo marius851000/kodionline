@@ -20,6 +20,10 @@ impl<T: Eq + Clone + Hash> OverridableVec<T> {
             self.value.extend(child.value);
         }
     }
+
+    fn is_empty(&self) -> bool {
+        self.value.is_empty()
+    }
 }
 
 impl<T: Eq + Clone + Hash> From<Vec<T>> for OverridableVec<T> {
@@ -94,6 +98,12 @@ impl UserConfig {
             resolution_order: OverridableVec::default(),
             format_order: OverridableVec::default(),
         }
+    }
+    /// return True if this UserConfig contain no settings at all, other than the overridable status
+    pub fn is_empty(&self) -> bool {
+        self.language_order.is_empty()
+            && self.resolution_order.is_empty()
+            && self.format_order.is_empty()
     }
 
     /// create a user config based on an [`HashMap`] of [`String`] with a [`String`] keyword

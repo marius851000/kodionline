@@ -258,9 +258,11 @@ fn kodi_recurse_inner_thread<
                         keep_going,
                     );
                     all_child_finished = false;
-                },
-                Ok(finished_sucessfully) => if all_child_finished {
-                    all_child_finished = finished_sucessfully
+                }
+                Ok(finished_sucessfully) => {
+                    if all_child_finished {
+                        all_child_finished = finished_sucessfully
+                    }
                 }
             }
         } else {
@@ -284,9 +286,11 @@ fn kodi_recurse_inner_thread<
                     keep_going,
                 );
                 all_child_finished = false;
-            },
-            Ok(finished_sucessfully) => if all_child_finished {
-                all_child_finished = finished_sucessfully
+            }
+            Ok(finished_sucessfully) => {
+                if all_child_finished {
+                    all_child_finished = finished_sucessfully
+                }
             }
         }
     }

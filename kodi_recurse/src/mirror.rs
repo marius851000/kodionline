@@ -61,9 +61,13 @@ fn fetch_media(save_path: PathBuf, media_url: &str) -> Result<(), ReportBuilder>
             StatusCode::OK => {
                 let bytes = match resp.bytes() {
                     Ok(v) => v,
-                    Err(err) => return Err(ReportBuilder::new_error(format!(
-                        "can't download the file at {}", media_url
-                    )).add_tip(format!("the error returned by resp.bytes() is {:?}", err)))
+                    Err(err) => {
+                        return Err(ReportBuilder::new_error(format!(
+                            "can't download the file at {}",
+                            media_url
+                        ))
+                        .add_tip(format!("the error returned by resp.bytes() is {:?}", err)))
+                    }
                 }; //TODO: get rid of unwrap
                 let mut save_file = match File::create(&save_path) {
                     Ok(value) => value,
@@ -250,8 +254,12 @@ pub fn do_mirror(
                 match fetch_media(media_path, &media_data.media_url) {
                     Ok(()) => (),
                     Err(mut report_error) => {
-                        info.add_report(report_error.add_tip("happened while downloading the main media file".to_string()));
-                        return None
+                        info.add_report(
+                            report_error.add_tip(
+                                "happened while downloading the main media file".to_string(),
+                            ),
+                        );
+                        return None;
                     }
                 };
             };

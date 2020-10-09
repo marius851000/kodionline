@@ -194,7 +194,6 @@ impl Kodi {
 
         let arguments = self.get_arguments(&result_file.to_string_lossy(), &access);
 
-
         let mut to_invoke = if self.sandbox_call {
             let mut bwrap_invoke = Exec::cmd("bwrap");
             let mut kodi_addon_folder = self.kodi_config_path.clone();
