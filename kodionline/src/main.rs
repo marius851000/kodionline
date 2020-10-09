@@ -5,9 +5,8 @@ extern crate rocket;
 use kodionline::plugin_page::static_rocket_route_info_for_render_plugin;
 use kodionline::redirect_page::static_rocket_route_info_for_redirect_art;
 use kodionline::redirect_page::static_rocket_route_info_for_redirect_media;
-
+use kodionline::index_page::static_rocket_route_info_for_render_index;
 use rocket::config::Environment;
-use rocket::State;
 use rocket_contrib::serve::StaticFiles;
 use rocket_contrib::templates::Template;
 
@@ -15,21 +14,7 @@ use clap::{App, Arg};
 
 use kodi_rust::{Kodi, Setting};
 
-use serde::Serialize;
 use std::fs::File;
-
-#[derive(Serialize)]
-struct PageIndex {
-    plugins_to_show: Vec<(String, String)>,
-}
-
-#[get("/")]
-fn render_index(setting: State<Setting>) -> Template {
-    let page = PageIndex {
-        plugins_to_show: setting.plugins_to_show.clone(),
-    };
-    Template::render("index", page)
-}
 
 fn main() {
     let app_m = App::new("kodi online")

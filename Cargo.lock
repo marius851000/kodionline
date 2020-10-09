@@ -1090,6 +1090,7 @@ checksum = "84613702fc079d2e22a2d39b9a1b80a8da9e82b13fb5fe7abcd488928ea75fdb"
 dependencies = [
  "maud_htmlescape",
  "maud_macros",
+ "rocket",
 ]
 
 [[package]]
