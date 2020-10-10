@@ -1,57 +1,16 @@
 use crate::{error_page::generate_error_page, format_standard_page, get_absolute_plugin_path};
 use kodi_rust::{
-    data::{KodiResult, ListItem, SubContent},
+    data::KodiResult,
     format_to_string, get_art_link_subcontent, get_media_link_resolved_url,
     get_media_link_subcontent, get_sub_content_from_parent,
     input::decode_input,
     input::encode_input,
-    Kodi, PathAccessData, PathAccessFormat, Setting, UserConfig,
+    Kodi, PathAccessData, Setting, UserConfig,
 };
 
 use log::error;
 use maud::{html, Markup, PreEscaped};
 use rocket::{http::RawStr, State};
-use serde::Serialize;
-
-#[derive(Serialize)]
-pub struct PagePluginMedia {
-    item: ListItem,
-    access: PathAccessFormat,
-    parent: Option<PathAccessFormat>,
-    plugin_type: String,
-    title_rendered: Option<String>,
-    media_url: String,
-    rendered_comment: Option<String>,
-}
-
-#[derive(Serialize)]
-pub struct SubContentDisplay {
-    data: SubContent,
-    label_html: String,
-    is_playable: bool,
-    media_url: String,
-    art_url: Option<String>,
-}
-
-#[derive(Serialize)]
-pub struct PagePluginFolder {
-    all_sub_content: Vec<SubContentDisplay>,
-    access: PathAccessFormat,
-    parent: Option<PathAccessFormat>,
-    plugin_type: String,
-    title_rendered: Option<String>,
-}
-
-#[derive(Serialize)]
-pub struct PagePluginKeyboard {
-    plugin_type: String,
-    access: PathAccessFormat,
-    parent: Option<PathAccessFormat>,
-    title_rendered: Option<String>,
-    keyboard_default: Option<String>,
-    keyboard_heading: Option<String>,
-    keyboard_hidden: bool,
-}
 
 #[allow(clippy::too_many_arguments)]
 #[get("/plugin?<path>&<parent_path>&<input>&<parent_input>&<additional_input>&<c>")]
@@ -186,15 +145,13 @@ pub fn render_plugin(
                                     ul class="language altlink" {
                                         @for language in resolved_listitem.x_avalaible_languages {
                                             li {
-                                                a href=(get_media_link_resolved_url(
-                                                    &media_base_url,
-                                                    &current_access.path,
-                                                    current_access.input.clone(),
+                                                a href=(get_absolute_plugin_path(
                                                     &{
                                                         let mut parent = current_access_without_static.clone();
                                                         parent.config.language_order.value = vec![language.clone()];
                                                         parent
                                                     },
+                                                    parent_access.as_ref()
                                                 )) {
                                                     (language)
                                                 }
@@ -270,7 +227,7 @@ pub fn render_plugin(
                                 @for (loop_nb, sub_content) in page.sub_content.drain(..).enumerate() {
                                     li class="media_in_list" {
                                         a href=(get_absolute_plugin_path(&PathAccessData::new(sub_content.url.clone(), None, UserConfig::new_empty()), Some(&current_access))) {
-                                            div class="subelem_title" { PreEscaped { (sub_content.listitem.get_display_html()) } }
+                                            div class="subelem_title" { (PreEscaped(sub_content.listitem.get_display_html())) }
                                             @if let Some(thumb_category) = sub_content.listitem.get_thumb_category() {
                                                 img class="illustration" src=(get_art_link_subcontent(
                                                     &sub_content,
