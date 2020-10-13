@@ -1,4 +1,4 @@
-use crate::{error_page::generate_error_page, format_standard_page, get_absolute_plugin_path};
+use crate::{error_page::generate_error_page, Presentation, get_absolute_plugin_path};
 use kodi_rust::{
     data::KodiResult,
     format_to_string, get_art_link_subcontent, get_media_link_resolved_url,
@@ -34,12 +34,6 @@ pub fn render_plugin(
         .clone()
         .add_config_prioritary(user_config.clone());
 
-    let mut splited = path.split('.');
-    splited.next();
-    let plugin_type = match splited.next() {
-        Some(value) => value.to_string(),
-        None => return generate_error_page(html!("impossible to get type of extension")),
-    };
 
     let mut input = input
         .map(|x| decode_input(&x))
@@ -50,7 +44,7 @@ pub fn render_plugin(
     }
 
     let current_access = PathAccessData {
-        path,
+        path: path.clone(),
         input,
         config: final_config.clone(),
     };
@@ -59,6 +53,13 @@ pub fn render_plugin(
         let mut v = current_access.clone();
         v.config = user_config;
         v
+    };
+
+    let mut splited = path.split('.');
+    splited.next();
+    let plugin_type = match splited.next() {
+        Some(value) => value.to_string(),
+        None => return generate_error_page(html!("impossible to get type of extension")).kodi_url(Some(current_access_without_static.path)).build(),
     };
 
     let parent_access = PathAccessData::try_create_from_url(
@@ -86,7 +87,7 @@ pub fn render_plugin(
 
                     let media_base_url = match &resolved_listitem.path {
                         Some(url) => url.clone(),
-                        None => return generate_error_page(html!("no media found for this page")),
+                        None => return generate_error_page(html!("no media found for this page")).kodi_url(Some(current_access_without_static.path)).build(),
                     };
 
                     let title = html!((PreEscaped(resolved_listitem.get_display_html())));
@@ -103,14 +104,14 @@ pub fn render_plugin(
                         current_access.input.clone(),
                         &current_access_without_static,
                     );
-                    
+
                     let media_type = if let Some(t) = resolved_listitem.category {
                         t
                     } else {
                         plugin_type
                     };
 
-                    format_standard_page(
+                    Presentation::new(
                         title,
                         html!(
                             div class = "main_media" {
@@ -192,9 +193,8 @@ pub fn render_plugin(
                                     }
                                 }
                             }
-                        ),
-                        Some(footer),
-                    )
+                        )
+                    ).kodi_url(Some(current_access_without_static.path)).build()
                 }
                 // contain a folder
                 None => {
@@ -209,7 +209,7 @@ pub fn render_plugin(
                     };
 
                     let mut contain_playable_element = false;
-                    format_standard_page(
+                    Presentation::new(
                         title_rendered,
                         html!(
                             ul class="list_media" {
@@ -248,13 +248,12 @@ pub fn render_plugin(
                                 button id = "play_all" { "play all music syncronously (take care, may be loud and/or laggy)"}
                                 script type="text/javascript" src="/static/musicplayer.js" {}
                             }
-                        ),
-                        Some(footer),
-                    )
+                        )
+                    ).kodi_url(Some(current_access_without_static.path)).build()
                 }
             }
         }
-        Ok(KodiResult::Keyboard(keyboard)) => format_standard_page(
+        Ok(KodiResult::Keyboard(keyboard)) => Presentation::new(
             html!("input required"),
             html!(
                 p { "the plugin asked for a value"}
@@ -274,15 +273,14 @@ pub fn render_plugin(
                 @if let Some(default) = keyboard.default {
                     p { b { "default input" } " : " (default) }
                 }
-            ),
-            None,
-        ),
+            )
+        ).kodi_url(Some(current_access_without_static.path)).build(),
         Err(err) => {
             error!(
                 "error while getting url \"{}\": {:?}",
                 current_access.path, err
             );
-            generate_error_page(html!((format!("{}", err))))
+            generate_error_page(html!((format!("{}", err)))).kodi_url(Some(current_access_without_static.path)).build()
         }
     }
 }

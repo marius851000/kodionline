@@ -1,11 +1,11 @@
-use crate::{format_standard_page, get_absolute_plugin_path};
+use crate::{Presentation, get_absolute_plugin_path};
 use kodi_rust::{PathAccessData, Setting, UserConfig};
 use maud::{html, PreEscaped};
 use rocket::State;
 
 #[get("/")]
 pub fn render_index(setting: State<Setting>) -> PreEscaped<String> {
-    format_standard_page(
+    Presentation::new(
         html!("kodi online"),
         html!(
             p class="website_description" {
@@ -42,7 +42,6 @@ pub fn render_index(setting: State<Setting>) -> PreEscaped<String> {
                 br {}
                 input type="submit" value="go to the path" {}
             }
-        ),
-        None,
-    )
+        )
+    ).build()
 }

@@ -13,6 +13,9 @@ pub mod redirect_page;
 
 pub mod index_page;
 
+mod presentation;
+pub use presentation::Presentation;
+
 pub fn get_absolute_plugin_path(
     main: &PathAccessData,
     parent: Option<&PathAccessData>,
@@ -44,38 +47,4 @@ pub fn get_absolute_plugin_path(
             String::new()
         }
     ))
-}
-
-pub fn format_standard_page(
-    page_title: Markup,
-    page_content: Markup,
-    additional_footer: Option<Markup>,
-) -> Markup {
-    html!(
-        (DOCTYPE)
-        head {
-            meta charset="utf-8" {}
-            title { (page_title) }
-            link rel="stylesheet" href="/static/kodionline.css" {}
-        }
-        body {
-            div id="header" {
-                ul class="horizontallist" {
-                    li {
-                        a href="/" {"main page"}
-                    }
-                }
-                h1 { (page_title) }
-            }
-            div id="content" { (page_content) }
-            div id="footer" {
-                @if let Some(footer) = additional_footer {
-                    (footer)
-                }
-                p {
-                    "website programmed by marius851000. Some data displayed on this site are not mine, namely nearly all data provided by the kodi's plugins"
-                }
-            }
-        }
-    )
 }
