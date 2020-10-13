@@ -8,7 +8,6 @@ use kodionline::redirect_page::static_rocket_route_info_for_redirect_art;
 use kodionline::redirect_page::static_rocket_route_info_for_redirect_media;
 use rocket::config::Environment;
 use rocket_contrib::serve::StaticFiles;
-use rocket_contrib::templates::Template;
 
 use clap::{App, Arg};
 
@@ -48,7 +47,6 @@ fn main() {
     rocket::ignite()
         .manage(kodi)
         .manage(setting)
-        .attach(Template::fairing())
         .mount(
             "/",
             routes![render_index, render_plugin, redirect_media, redirect_art],

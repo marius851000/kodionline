@@ -18,4 +18,4 @@ maud = { version = "0.22.0", features = ["rocket"] }
 [dependencies.rocket_contrib]
 version = "0.4.5"
 default-features = false
-features = ["tera_templates", "serve"]
+features = ["serve"]

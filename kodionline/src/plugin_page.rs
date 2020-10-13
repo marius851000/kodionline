@@ -103,18 +103,7 @@ pub fn render_plugin(
                         current_access.input.clone(),
                         &current_access_without_static,
                     );
-
-                    /*let data = PagePluginMedia {
-                        item: resolved_listitem,
-                        access: PathAccessFormat::new_from_pathaccessdata(current_access),
-                        parent: parent_access.map(|x| PathAccessFormat::new_from_pathaccessdata(x)),
-                        plugin_type,
-                        title_rendered,
-                        media_url,
-                        rendered_comment,
-                    };*/
-                    //Template::render("plugin_media", data)
-                    //TODO:
+                    
                     let media_type = if let Some(t) = resolved_listitem.category {
                         t
                     } else {
