@@ -1,6 +1,6 @@
 use crate::{kodi_recurse_par, AppArgument, RecurseOption, RecurseReport, ReportBuilder};
 use kodi_rust::data::{ListItem, SubContent};
-use reqwest::{blocking::ClientBuilder, StatusCode};
+use reqwest::{blocking, StatusCode};
 use serde::Serialize;
 use serde_json;
 use std::fs;
@@ -54,21 +54,10 @@ fn encode_path(path: String) -> String {
 }
 
 fn fetch_media(save_path: PathBuf, media_url: &str) -> Result<(), ReportBuilder> {
-    let client = ClientBuilder::new().referer(false).build().unwrap();
     if media_url.starts_with("http://") | media_url.starts_with("https://") {
-        let resp = client.get(media_url).send().unwrap();
+        let mut resp = blocking::get(media_url).unwrap();
         match resp.status() {
             StatusCode::OK => {
-                let bytes = match resp.bytes() {
-                    Ok(v) => v,
-                    Err(err) => {
-                        return Err(ReportBuilder::new_error(format!(
-                            "can't download the file at {}",
-                            media_url
-                        ))
-                        .add_tip(format!("the error returned by resp.bytes() is {:?}", err)))
-                    }
-                }; //TODO: get rid of unwrap
                 let mut save_file = match File::create(&save_path) {
                     Ok(value) => value,
                     Err(err) => {
@@ -79,7 +68,16 @@ fn fetch_media(save_path: PathBuf, media_url: &str) -> Result<(), ReportBuilder>
                         .add_tip(format!("the error returned by File::create is {:?}", err)))
                     }
                 };
-                save_file.write_all(&bytes).unwrap(); //TODO: get rid of unwrap
+                match resp.copy_to(&mut save_file) {
+                    Ok(v) => v,
+                    Err(err) => {
+                        return Err(ReportBuilder::new_error(format!(
+                            "can't download the file at {}",
+                            media_url
+                        ))
+                        .add_tip(format!("the error returned by resp.bytes() is {:?}", err)))
+                    }
+                }; //TODO: get rid of unwrap
             }
             err_code => {
                 return Err(ReportBuilder::new_error(format!(
