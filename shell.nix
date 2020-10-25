@@ -28,7 +28,7 @@ pkgs.stdenv.mkDerivation {
 	nativeBuildInputs = with pkgs; [
 		fish
 		python2
-		urlencode
+#		urlencode
 		pkg-config
 		bubblewrap
 	];

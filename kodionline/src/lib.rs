@@ -16,6 +16,10 @@ pub mod index_page;
 mod presentation;
 pub use presentation::Presentation;
 
+mod locale;
+pub use locale::get_ui_locale;
+pub use locale::LOCALES;
+
 pub fn get_absolute_plugin_path(
     main: &PathAccessData,
     parent: Option<&PathAccessData>,

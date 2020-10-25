@@ -1,4 +1,8 @@
-use maud::{Markup, html, DOCTYPE};
+use fluent_templates::Loader;
+use maud::{html, Markup, DOCTYPE};
+use unic_langid::LanguageIdentifier;
+
+use crate::LOCALES;
 
 pub struct Presentation {
     pub title: Markup,
@@ -11,7 +15,7 @@ impl Presentation {
         Presentation {
             title,
             content,
-            kodi_url: None
+            kodi_url: None,
         }
     }
 
@@ -20,7 +24,7 @@ impl Presentation {
         self
     }
 
-    pub fn build(self) -> Markup {
+    pub fn build(self, locale: &LanguageIdentifier) -> Markup {
         html!(
             (DOCTYPE)
             head {
@@ -32,7 +36,7 @@ impl Presentation {
                 div id="header" {
                     ul class="horizontallist" {
                         li {
-                            a href="/" {"main page"}
+                            a href="/" {(LOCALES.lookup(locale, "main-page"))}
                         }
                     }
                     h1 { (self.title) }
@@ -40,10 +44,10 @@ impl Presentation {
                 div id="content" { (self.content) }
                 div id="footer" {
                     @if let Some(kodi_url) = self.kodi_url {
-                        p {"kodi plugin url : " (kodi_url)}
+                        p {(LOCALES.lookup(locale, "kodi-plugin-url")) " : " (kodi_url)}
                     }
                     p {
-                        "website programmed by marius851000. Some data displayed on this site are not mine, namely nearly all data provided by the kodi's plugins."
+                        (LOCALES.lookup(locale, "footer-legal"))
                     }
                 }
             }

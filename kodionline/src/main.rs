@@ -2,17 +2,14 @@
 #[macro_use]
 extern crate rocket;
 
+use clap::{App, Arg};
+use kodi_rust::{Kodi, Setting};
 use kodionline::index_page::static_rocket_route_info_for_render_index;
 use kodionline::plugin_page::static_rocket_route_info_for_render_plugin;
 use kodionline::redirect_page::static_rocket_route_info_for_redirect_art;
 use kodionline::redirect_page::static_rocket_route_info_for_redirect_media;
 use rocket::config::Environment;
 use rocket_contrib::serve::StaticFiles;
-
-use clap::{App, Arg};
-
-use kodi_rust::{Kodi, Setting};
-
 use std::fs::File;
 
 fn main() {

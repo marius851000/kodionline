@@ -237,10 +237,12 @@ pub fn do_mirror(
                 Ok(()) => (),
                 Err(err) => {
                     info.add_report(
-                        ReportBuilder::new_error("can't export the data to a json file".to_string())
-                            .set_internal_error(true)
-                            .add_tip(format!("the path in question is {:?}", this_data_path))
-                            .add_tip(format!("error of serde_json::to_writer_pretty : {:?}", err)),
+                        ReportBuilder::new_error(
+                            "can't export the data to a json file".to_string(),
+                        )
+                        .set_internal_error(true)
+                        .add_tip(format!("the path in question is {:?}", this_data_path))
+                        .add_tip(format!("error of serde_json::to_writer_pretty : {:?}", err)),
                     );
                     return None;
                 }

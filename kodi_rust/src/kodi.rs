@@ -241,16 +241,12 @@ impl Kodi {
         }
 
         let (stdout, exit_status) = if self.catch_stdout {
-            let captured = to_invoke
-                .capture()
-                .map_err(KodiError::CantCreateProcess)?;
+            let captured = to_invoke.capture().map_err(KodiError::CantCreateProcess)?;
             (Some(captured.stdout_str()), captured.exit_status)
         } else {
             (
                 None,
-                to_invoke
-                    .join()
-                    .map_err(KodiError::CantCreateProcess)?,
+                to_invoke.join().map_err(KodiError::CantCreateProcess)?,
             )
         };
 
