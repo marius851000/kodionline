@@ -1,5 +1,3 @@
-kodionline = kodi online
-
 ## plugin page
 
 error-cant-get-plugin-type = Can't get the type of the plugin.
@@ -33,12 +31,13 @@ footer-legal = Website programmed by marius851000. Some data displayed on this s
 
 
 ## error
-error-title = ${ kodionline }: error
+error-title = kodi online: error
 intro-error = The following error occured
+kodionline = kodi online
 
 ## index page
 
-presentation-head = ${ kodionline } is a service that allow to browse the content of kodi addon in a web browser. Metadata will be fetched by the server, but the media will be viewed/downloaded by your computer from the original site.
+presentation-head = kodi online is a service that allow to browse the content of kodi addon in a web browser. Metadata will be fetched by the server, but the media will be viewed/downloaded by your computer from the original site.
 presentation-advantage = This may have some advantage :
 presentation-advantage-1 = it permit greater anonymity: individual user tracking are almost always done when viewing the webpage that contain the video, not the video itself
 presentation-advantage-2 = it allow to have a unified interface (while the original interface should be almost always better than this one, this one have a download button)

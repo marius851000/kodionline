@@ -11,5 +11,5 @@ fluent_templates::static_loader! {
 }
 
 pub fn get_ui_locale() -> LanguageIdentifier {
-    langid!("en")
+    langid!("fr-FR")
 }
