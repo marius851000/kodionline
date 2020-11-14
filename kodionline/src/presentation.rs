@@ -29,7 +29,7 @@ impl Presentation {
             (DOCTYPE)
             head {
                 meta charset = "utf-8" {}
-                title { (&self.title) }
+                title { (self.title.clone()) }
                 link rel="stylesheet" href="/static/kodionline.css" {}
             }
             body {

@@ -3,7 +3,7 @@
 extern crate rocket;
 
 use kodi_rust::{input::encode_input, urlencode, PathAccessData};
-use maud::{html, Markup, PreEscaped, DOCTYPE};
+use maud::PreEscaped;
 
 pub mod plugin_page;
 

@@ -1,5 +1,4 @@
 use fluent_templates;
-use fluent_templates::Loader;
 use unic_langid::{langid, LanguageIdentifier};
 
 fluent_templates::static_loader! {

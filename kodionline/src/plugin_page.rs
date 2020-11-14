@@ -236,7 +236,7 @@ pub fn render_plugin(
                                         }
 
                                         @if sub_content.listitem.is_playable() && plugin_type == "audio" {
-                                            (contain_playable_element = true; "")
+                                            ({contain_playable_element = true; ""})
                                             br {}
                                             audio class="audiopreview" audiopreview_nb=(loop_nb.to_string()) preload=(if loop_nb == 0 { "auto" } else { "none" }) controls="true" {
                                                 source src = (get_media_link_subcontent(
