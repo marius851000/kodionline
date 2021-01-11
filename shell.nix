@@ -1,4 +1,5 @@
-{ pkgs ? import <nixpkgs> {}, naersk ? import (pkgs.fetchFromGitHub {
+{ pkgs ? import <nixpkgs> {},
+naersk ? import (pkgs.fetchFromGitHub {
 	owner = "nmattia";
 	repo = "naersk";
 	rev = "529e910a3f423a8211f8739290014b754b2555b6";
@@ -14,16 +15,16 @@ let
 		sha256 = "iiebonXsCLZDsUCoWZ9zazDR+lpNQHNrb+vYJ6M8qVA=";
 		rev = "0.1.2";
 	});
+
+	kodi-dl = pkgs.fetchFromGitHub {
+		owner = "marius851000";
+		repo = "kodi-dl";
+		rev = "d03c12102a5328fe50ef74727aa92ebf4afc7669";
+		sha256 = "G/mE9LcvaMTnXUpbuklc8MSZLziVZ5CoFkOZEVEN+sc=";
+	};
 in
 pkgs.stdenv.mkDerivation {
 	name = "kodionline";
-	propagatedBuildInputs = with pkgs.python2Packages; [
-		chardet
-		mock
-		lxml
-		urllib3
-		pkgs.openssl
-	];
 
 	nativeBuildInputs = with pkgs; [
 		fish
@@ -31,13 +32,18 @@ pkgs.stdenv.mkDerivation {
 #		urlencode
 		pkg-config
 		bubblewrap
-	];
+		rustup
+	] ++ (with pkgs.python2Packages; [
+		chardet
+		mock
+		lxml
+		urllib3
+		pkgs.openssl
+	]);
 
 	NIX_ENFORCE_PURITY=0;
 
 	shellHook = ''
-		export PYTHONPATH=$PYTHONPATH:/home/marius/kodi-dl
-		fish
-		exit
+		export PYTHONPATH=$PYTHONPATH:${kodi-dl}
 	'';
 }
