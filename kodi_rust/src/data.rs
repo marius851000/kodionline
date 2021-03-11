@@ -85,15 +85,11 @@ impl ListItem {
     /// ```
     #[must_use]
     pub fn is_playable(&self) -> bool {
-        for is_playable_key in &["IsPlayable", "isPlayable", "Isplayable", "isplayable"] {
-            if let Some(is_playable_value) = self
-                .properties
-                .get(&is_playable_key.to_string())
-                .map(|x| x.as_str())
-            {
-                return matches!(is_playable_value, "true" | "True" | "TRUE");
+        for (key, value) in self.properties.iter() {
+            if key.to_lowercase() == "isplayable" {
+                return value.to_lowercase() == "true";
             };
-        }
+        };
         false
     }
 
