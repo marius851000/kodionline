@@ -1,4 +1,3 @@
-#![feature(process_exitcode_placeholder)]
 //TODO: use env_logger
 use clap::{App, Arg, SubCommand};
 use kodi_recurse::AppArgument;
@@ -7,7 +6,6 @@ use kodi_rust::{Kodi, PathAccessData, Setting};
 use console::style;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::process::ExitCode;
 
 use kodi_recurse::do_check;
 use kodi_recurse::do_mirror;
@@ -15,7 +13,7 @@ use kodi_recurse::RecurseOption;
 
 use indicatif::ProgressBar;
 
-fn main() -> ExitCode {
+fn main() /* -> ExitCode */ { //TODO: use once stabilized
     let app_m = App::new("kodi recurse")
         .arg(
             Arg::with_name("config")
@@ -102,7 +100,7 @@ fn main() -> ExitCode {
                         "can't parse the setting file at {} due to {:?}",
                         setting_path, err
                     );
-                    return ExitCode::FAILURE;
+                    return
                 }
             },
             Err(err) => {
@@ -110,7 +108,7 @@ fn main() -> ExitCode {
                     "can't open the setting file at {} due to {:?}",
                     setting_path, err
                 );
-                return ExitCode::FAILURE;
+                return
             }
         },
         None => Setting::default(),
@@ -206,7 +204,7 @@ fn main() -> ExitCode {
             Ok(v) => v,
             Err(_) => {
                 println!("impossible to parse the number {}", jobs_str);
-                return ExitCode::FAILURE;
+                return
             }
         },
         None => 1,
@@ -257,7 +255,7 @@ fn main() -> ExitCode {
         }
     } else {
         println!("no sub-command given");
-        return ExitCode::FAILURE;
+        return
     };
 
     if !result.is_empty() {
@@ -280,6 +278,4 @@ fn main() -> ExitCode {
     } else {
         println!("there are no error.");
     }
-
-    ExitCode::SUCCESS
 }
