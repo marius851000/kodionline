@@ -61,9 +61,12 @@ impl ListItem {
     #[must_use]
     pub fn get_display_html(&self) -> String {
         if let Some(value) = &self.label {
-            return format_to_string(value);
-        };
-        "unnamed".to_string()
+             format_to_string(value)
+        } else if let Some(name) = &self.info.title {
+            format_to_string(name)
+        } else {
+            "unnamed".to_string()
+        }
     }
 
     /// return ``true`` if this [`LisItem`] is marked as playable
