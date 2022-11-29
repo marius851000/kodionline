@@ -27,18 +27,18 @@ pkgs.stdenv.mkDerivation {
 	name = "kodionline";
 
 	nativeBuildInputs = with pkgs; [
-		fish
-		python2
+		python3
 #		urlencode
 		pkg-config
 		bubblewrap
-		rustup
-	] ++ (with pkgs.python2Packages; [
+	] ++ (with pkgs.python3Packages; [
 		chardet
 		mock
 		lxml
 		urllib3
 		pkgs.openssl
+		certifi
+		idna
 	]);
 
 	NIX_ENFORCE_PURITY=0;

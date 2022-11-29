@@ -282,7 +282,7 @@ pub fn render_plugin(
         ).kodi_url(Some(current_access_without_static.path)).build(&locale),
         Err(err) => {
             let error_args = {
-                let mut map = HashMap::new();
+                let mut map: HashMap<String, _> = HashMap::new();
                 map.insert("url".into(), current_access.path.into());
                 map
             };

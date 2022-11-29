@@ -105,7 +105,7 @@ impl Kodi {
             cache: Mutex::new(TimedCache::with_lifespan_and_capacity(
                 cache_time, cache_size,
             )),
-            python_command: "python2".into(),
+            python_command: "python3".into(),
             cache_time,
             cache_size,
             catch_stdout: true,
@@ -229,6 +229,8 @@ impl Kodi {
         } else {
             Exec::cmd(&self.python_command)
         };
+
+        println!("{:?}", to_invoke);
 
         if self.catch_stdout {
             to_invoke = to_invoke

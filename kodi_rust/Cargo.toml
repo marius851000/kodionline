@@ -7,13 +7,13 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-subprocess = "0.2.4"
-shellexpand = "2.0.0"
+subprocess = "0.2.9"
+shellexpand = "2.1.2"
 tempfile = "3.1.0"
 serde = { version = "1.0", features = ["derive"] }
 html-escape = "0.2.6"
-cached = "0.18.0"
-percent-encoding = "2.1.0"
+cached = "0.39.0"
+percent-encoding = "2.2.0"
 log = "0.4.11"
 rayon = "1.4.0"
 serde_json = "1.0"

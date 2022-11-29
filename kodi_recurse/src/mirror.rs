@@ -7,7 +7,6 @@ use std::fs;
 use std::fs::DirBuilder;
 use std::fs::File;
 use std::io::ErrorKind;
-use std::io::Write;
 use std::path::PathBuf;
 
 #[derive(Serialize)]
@@ -93,7 +92,9 @@ fn fetch_media(save_path: PathBuf, media_url: &str) -> Result<(), ReportBuilder>
                 "can't copy the file from {} to {}",
                 media_url,
                 save_path.to_string_lossy()
-            )));
+            )).add_tip(
+                format!("the source IO error is {:?}", err)
+            ));
         };
     }
     Ok(())
@@ -131,7 +132,7 @@ pub fn get_success_path(mut folder: PathBuf) -> PathBuf {
 }
 
 pub fn do_mirror(
-    app_argument: AppArgument,
+    _app_argument: AppArgument,
     mirror_argument: AppArgument,
     option: RecurseOption,
 ) -> Vec<RecurseReport> {
@@ -253,7 +254,7 @@ pub fn do_mirror(
                 media_path.push(media_data.media_file_name);
                 match fetch_media(media_path, &media_data.media_url) {
                     Ok(()) => (),
-                    Err(mut report_error) => {
+                    Err(report_error) => {
                         info.add_report(
                             report_error.add_tip(
                                 "happened while downloading the main media file".to_string(),

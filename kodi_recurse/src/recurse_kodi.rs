@@ -144,7 +144,7 @@ fn kodi_recurse_inner_thread<
     keep_going: bool,
     sub_content_from_parent: Option<SubContent>,
 ) -> bool {
-    let (parent_page, parent_access) = match parent {
+    let (_parent_page, parent_access) = match parent {
         Some((p, a)) => (Some(p), Some(a)),
         None => (None, None),
     };

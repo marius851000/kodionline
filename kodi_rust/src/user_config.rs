@@ -174,7 +174,7 @@ impl UserConfig {
                 result.push_str(value);
             }
             result
-        };
+        }
 
         let mut result = HashMap::new();
         result.insert("lang_ord".into(), add_double_dot(&*self.language_order));
@@ -334,7 +334,7 @@ impl UserConfig {
                 known_value.insert(entry);
             }
             *list = new_list;
-        };
+        }
 
         remove_duplicate(&mut *self.language_order);
         remove_duplicate(&mut *self.resolution_order);
