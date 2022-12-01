@@ -33,8 +33,18 @@
 
             src = ./.;
 
+            postPatch = ''
+              substituteInPlace ./kodionline/src/main.rs \
+                --replace \"static\" \"$out/share/kodionline/static\"
+            '';
+
             nativeBuildInputs = [ pkgs.pkg-config ];
             buildInputs = [ pkgs.openssl ];
+
+            postInstall = "
+              mkdir -p $out/share/kodionline
+              cp -r ${./static} $out/share/kodionline/static
+            ";
 
             cargoLock.lockFile = ./Cargo.lock;
           };
