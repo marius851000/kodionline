@@ -56,9 +56,7 @@
             dontUnpack = true;
 
             nativeBuildInputs = with pkgs; [
-                python3
                 pkg-config
-                bubblewrap
                 makeWrapper
               ] ++ (with pkgs.python3Packages; [
                 chardet
@@ -74,7 +72,8 @@
               mkdir -p $out/bin
               makeWrapper ${kodionline_unwrapped}/bin/kodionline $out/bin/kodionline \
                 --prefix PYTHONPATH : $PYTHONPATH:${kodidl} \
-                --prefix PATH : ${pkgs.python3}/bin
+                --prefix PATH : ${pkgs.python3}/bin \
+                --prefix PATH : ${pkgs.bubblewrap}/bin
             '';
           };
         };
