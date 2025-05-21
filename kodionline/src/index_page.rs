@@ -7,7 +7,7 @@ use rocket::State;
 use crate::{get_ui_locale, LOCALES};
 
 #[get("/")]
-pub fn render_index(setting: State<Setting>) -> PreEscaped<String> {
+pub fn render_index(setting: &State<Setting>) -> PreEscaped<String> {
     let locale = get_ui_locale();
 
     Presentation::new(

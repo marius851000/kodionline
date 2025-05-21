@@ -8,11 +8,11 @@ edition = "2018"
 
 [dependencies]
 subprocess = "0.2.9"
-shellexpand = "2.1.2"
+shellexpand = "3.1.1"
 tempfile = "3.1.0"
 serde = { version = "1.0", features = ["derive"] }
 html-escape = "0.2.6"
-cached = "0.39.0"
+cached = "0.55.1"
 percent-encoding = "2.2.0"
 log = "0.4.11"
 rayon = "1.4.0"

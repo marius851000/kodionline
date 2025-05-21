@@ -8,7 +8,7 @@ use kodi_rust::{
 use fluent_templates::Loader;
 use log::error;
 use maud::{html, Markup, PreEscaped};
-use rocket::{http::RawStr, State};
+use rocket::State;
 use std::collections::HashMap;
 
 use crate::{get_ui_locale, LOCALES};
@@ -16,12 +16,12 @@ use crate::{get_ui_locale, LOCALES};
 #[allow(clippy::too_many_arguments)]
 #[get("/plugin?<path>&<parent_path>&<input>&<parent_input>&<additional_input>&<c>")]
 pub fn render_plugin(
-    kodi: State<Kodi>,
-    setting: State<Setting>,
+    kodi: &State<Kodi>,
+    setting: &State<Setting>,
     path: String,
     parent_path: Option<String>,
-    input: Option<&RawStr>,
-    parent_input: Option<&RawStr>,
+    input: Option<&str>,
+    parent_input: Option<&str>,
     additional_input: Option<String>,
     c: Option<String>, //TODO: user_config_encoded in cookie
 ) -> Markup {
@@ -71,7 +71,7 @@ pub fn render_plugin(
 
     let parent_access = PathAccessData::try_create_from_url(
         parent_path,
-        parent_input.map(|x| x.as_str()),
+        parent_input,
         final_config,
     );
 
@@ -282,7 +282,7 @@ pub fn render_plugin(
         ).kodi_url(Some(current_access_without_static.path)).build(&locale),
         Err(err) => {
             let error_args = {
-                let mut map: HashMap<String, _> = HashMap::new();
+                let mut map = HashMap::new();
                 map.insert("url".into(), current_access.path.into());
                 map
             };

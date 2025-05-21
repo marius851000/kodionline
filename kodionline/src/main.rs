@@ -4,15 +4,37 @@ extern crate rocket;
 
 use clap::{App, Arg};
 use kodi_rust::{Kodi, Setting};
-use kodionline::index_page::static_rocket_route_info_for_render_index;
-use kodionline::plugin_page::static_rocket_route_info_for_render_plugin;
-use kodionline::redirect_page::static_rocket_route_info_for_redirect_art;
-use kodionline::redirect_page::static_rocket_route_info_for_redirect_media;
-use rocket::config::Environment;
-use rocket_contrib::serve::StaticFiles;
+use kodionline::index_page::render_index;
+use kodionline::plugin_page::render_plugin;
+use kodionline::redirect_page::redirect_art;
+use kodionline::redirect_page::redirect_media;
+use rocket::http::ContentType;
+use rust_embed::Embed;
+use std::borrow::Cow;
+use std::ffi::OsStr;
 use std::fs::File;
+use std::path::PathBuf;
 
-fn main() {
+#[derive(Embed)]
+#[folder = "static/"]
+struct Assets;
+
+// from https://git.sr.ht/~pyrossh/rust-embed/tree/master/item/examples/rocket.rs
+#[get("/static/<file..>")]
+fn static_files(file: PathBuf) -> Option<(ContentType, Cow<'static, [u8]>)> {
+  let filename = file.display().to_string();
+  let asset = Assets::get(&filename)?;
+  let content_type = file
+    .extension()
+    .and_then(OsStr::to_str)
+    .and_then(ContentType::from_extension)
+    .unwrap_or(ContentType::Bytes);
+
+  Some((content_type, asset.data))
+}
+
+#[launch]
+fn rocket() -> _{
     let app_m = App::new("kodi online")
         .arg(
             Arg::with_name("config")
@@ -30,24 +52,23 @@ fn main() {
         Setting::default()
     };
 
-    let mut kodi = if Environment::active().unwrap().is_dev() {
+    //TODO: restore with a switch in clap once clap is updated.
+    let mut kodi = /*if Environment::active().unwrap().is_dev() {
         Kodi::new(&setting.kodi_path, 2, 500)
-    } else {
-        Kodi::new(&setting.kodi_path, 3600, 500)
-    };
+    } else {*/
+        Kodi::new(&setting.kodi_path, 3600, 500);
+    //};
 
     kodi.set_python_command(setting.python_command.clone());
     kodi.set_catch_stdout(false);
     kodi.sandbox_call(true);
     kodi.allowed_path = setting.allowed_path.clone();
 
-    rocket::ignite()
+    rocket::build()
         .manage(kodi)
         .manage(setting)
         .mount(
             "/",
-            routes![render_index, render_plugin, redirect_media, redirect_art],
+            routes![render_index, render_plugin, redirect_media, redirect_art, static_files],
         )
-        .mount("/static", StaticFiles::from("static"))
-        .launch();
 }

@@ -1,3 +1,5 @@
+use std::fs::File;
+
 use kodi_rust::{
     data::{KodiResult, ListItem},
     encode_utf8_url, get_sub_content_from_parent, should_serve_file, Kodi, PathAccessData, Setting,
@@ -6,16 +8,15 @@ use kodi_rust::{
 
 use log::{error, info};
 use rocket::{
-    http::RawStr, response, response::NamedFile, response::Redirect, response::Responder, Request,
-    State,
+    response, response::Redirect, response::Responder, Request, State,
 };
 
 pub enum ServeDataFromPlugin {
     Redirect(Redirect),
-    NamedFile(NamedFile),
+    NamedFile(File),
 }
 
-impl<'r> Responder<'r> for ServeDataFromPlugin {
+impl<'r> Responder<'r, 'r> for ServeDataFromPlugin {
     fn respond_to(self, request: &Request) -> response::Result<'r> {
         match self {
             Self::Redirect(r) => r.respond_to(request),
@@ -25,7 +26,7 @@ impl<'r> Responder<'r> for ServeDataFromPlugin {
 }
 
 pub fn redirect_data_generic<F>(
-    kodi: State<Kodi>,
+    kodi: &State<Kodi>,
     access: PathAccessData,
     parent_access_option: Option<PathAccessData>,
     category_label: &str,
@@ -39,13 +40,13 @@ where
         if should_serve_file(&data_url) {
             //TODO: check if the file is permitted to be read
             Some(ServeDataFromPlugin::NamedFile(
-                match NamedFile::open(data_url) {
-                    Ok(file) => file,
+                match File::open(data_url) {
+                    Ok(v) => v,
                     Err(err) => {
                         error!("failed to open the local file due to {:?}", err);
                         return None;
                     }
-                },
+                }
             ))
         } else {
             let encoded = encode_utf8_url(&data_url);
@@ -107,12 +108,12 @@ where
 
 #[get("/get_media?<path>&<input>&<parent_path>&<parent_input>&<c>")]
 pub fn redirect_media(
-    kodi: State<Kodi>,
-    setting: State<Setting>,
+    kodi: &State<Kodi>,
+    setting: &State<Setting>,
     path: String,
-    input: Option<&RawStr>,
+    input: Option<&str>,
     parent_path: Option<String>,
-    parent_input: Option<&RawStr>,
+    parent_input: Option<&str>,
     c: Option<String>,
 ) -> Option<ServeDataFromPlugin> {
     let config_in_url = UserConfig::new_from_optional_uri(c);
@@ -123,10 +124,10 @@ pub fn redirect_media(
 
     redirect_data_generic(
         kodi,
-        PathAccessData::new(path, input.map(|x| x.as_str()), final_config.clone()),
+        PathAccessData::new(path, input, final_config.clone()),
         PathAccessData::try_create_from_url(
             parent_path,
-            parent_input.map(|x| x.as_str()),
+            parent_input,
             final_config,
         ),
         "media",
@@ -137,13 +138,13 @@ pub fn redirect_media(
 #[get("/get_art?<category>&<path>&<input>&<parent_path>&<parent_input>&<c>")]
 #[allow(clippy::too_many_arguments)]
 pub fn redirect_art(
-    kodi: State<Kodi>,
-    setting: State<Setting>,
+    kodi: &State<Kodi>,
+    setting: &State<Setting>,
     category: String,
     path: String,
-    input: Option<&RawStr>,
+    input: Option<&str>,
     parent_path: Option<String>,
-    parent_input: Option<&RawStr>,
+    parent_input: Option<&str>,
     c: Option<String>,
 ) -> Option<ServeDataFromPlugin> {
     let config_in_url = UserConfig::new_from_optional_uri(c);
@@ -154,10 +155,10 @@ pub fn redirect_art(
 
     redirect_data_generic(
         kodi,
-        PathAccessData::new(path, input.map(|x| x.as_str()), final_config.clone()),
+        PathAccessData::new(path, input, final_config.clone()),
         PathAccessData::try_create_from_url(
             parent_path,
-            parent_input.map(|x| x.as_str()),
+            parent_input,
             final_config,
         ),
         "art",
